@@ -152,6 +152,17 @@ manualIp.addEventListener('keydown', (e) => { if (e.key === 'Enter') manualBtn.o
     chk.onchange = async () => {
       chk.checked = await window.native.setAutoLaunch(chk.checked);
     };
+
+    // 役割の切り替え(この PC をホストにもできる)
+    const roleRow = document.getElementById('roleRow');
+    const roleSel = document.getElementById('roleSel');
+    roleRow.style.display = 'flex';
+    roleSel.value = 'receiver';
+    roleSel.onchange = async () => {
+      if (roleSel.value === 'receiver') return;
+      overlayMsg.textContent = '役割を切り替えて再起動します…';
+      await window.native.setRole(roleSel.value);
+    };
     window.native.onSenderDiscovered((found) => {
       if (!wsAlive) connect({ ip: found.ip, port: found.port, hostLabel: found.host });
     });

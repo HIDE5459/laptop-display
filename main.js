@@ -22,6 +22,7 @@ const {
 } = require('electron');
 const path = require('path');
 const os = require('os');
+const fs = require('fs');
 const dgram = require('dgram');
 const { spawn, execFileSync } = require('child_process');
 const { startSignaling, lanAddresses } = require('./lib/signaling');
@@ -31,13 +32,24 @@ const SIGNAL_PORT = 3100;
 const DISCOVERY_PORT = 3101;
 const BEACON_INTERVAL_MS = 2000;
 
+// 役割は「Mac = 送信 / Windows = 受信」を既定とするが、設定で入れ替えられる。
+// Mac 同士・Windows 同士や、Windows をホストにする構成にも対応するため。
+const ROLE_FILE = path.join(app.getPath('userData'), 'role.json');
+const DEFAULT_ROLE = process.platform === 'darwin' ? 'sender' : 'receiver';
+
+function savedRole() {
+  try {
+    const value = JSON.parse(fs.readFileSync(ROLE_FILE, 'utf8')).role;
+    if (value === 'sender' || value === 'receiver') return value;
+  } catch {}
+  return null;
+}
+
 const role = process.argv.includes('--receiver')
   ? 'receiver'
   : process.argv.includes('--sender')
     ? 'sender'
-    : process.platform === 'darwin'
-      ? 'sender'
-      : 'receiver';
+    : savedRole() || DEFAULT_ROLE;
 
 let win = null;
 let tray = null;
@@ -600,6 +612,23 @@ ipcMain.handle('relaunch', () => {
 });
 
 ipcMain.handle('get-peers', () => peerState);
+
+// 役割の切り替え。書き込んだあと再起動して反映する。
+ipcMain.handle('get-role', () => ({ role, saved: savedRole(), default: DEFAULT_ROLE }));
+
+ipcMain.handle('set-role', (_e, next) => {
+  if (next !== 'sender' && next !== 'receiver') return false;
+  try {
+    fs.mkdirSync(path.dirname(ROLE_FILE), { recursive: true });
+    fs.writeFileSync(ROLE_FILE, JSON.stringify({ role: next }));
+  } catch {
+    return false;
+  }
+  isQuitting = true;
+  app.relaunch();
+  app.exit(0);
+  return true;
+});
 
 // OS のログイン時に自動起動する設定
 ipcMain.handle('get-auto-launch', () => {

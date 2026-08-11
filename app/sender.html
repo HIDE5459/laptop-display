@@ -176,8 +176,16 @@
       </label>
       <label class="status-sub" style="display:flex;align-items:center;gap:7px;cursor:pointer;margin-top:6px">
         <input type="checkbox" id="loginChk">
-        この Mac の起動時に自動で起動する
+        この PC の起動時に自動で起動する
       </label>
+      <div class="status-row" style="margin-top:12px">
+        <span class="status-sub">この PC の役割:</span>
+        <select class="field" id="roleSel">
+          <option value="sender">ホスト(画面を配信する)</option>
+          <option value="receiver">ディスプレイ(画面を表示する)</option>
+        </select>
+        <span class="status-sub" id="roleSub"></span>
+      </div>
     </section>
   </main>
 

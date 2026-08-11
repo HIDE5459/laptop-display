@@ -648,6 +648,20 @@ async function tryAutoStart() {
   };
   if (info.ips.length) urlRow.appendChild(copyBtn);
 
+  // 役割の切り替え(Mac 同士 / Windows 同士 / Windows をホストにする構成に対応)
+  const roleSel = document.getElementById('roleSel');
+  const roleSub = document.getElementById('roleSub');
+  roleSel.value = 'sender';
+  roleSub.textContent =
+    info.platform === 'darwin'
+      ? ''
+      : 'この PC は Windows です。仮想ディスプレイ・カーソル移動・入力の再現は macOS 専用のため使えません(配信は可能)。';
+  roleSel.onchange = async () => {
+    if (roleSel.value === 'sender') return;
+    roleSub.textContent = '役割を切り替えて再起動します…';
+    await window.native.setRole(roleSel.value);
+  };
+
   const loginChk = document.getElementById('loginChk');
   loginChk.checked = await window.native.getAutoLaunch();
   loginChk.onchange = async () => {

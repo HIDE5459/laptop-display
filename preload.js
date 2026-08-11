@@ -2,6 +2,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('native', {
   getInfo: () => ipcRenderer.invoke('get-info'),
+  getRole: () => ipcRenderer.invoke('get-role'),
+  setRole: (role) => ipcRenderer.invoke('set-role', role),
   getSources: () => ipcRenderer.invoke('get-sources'),
   getPeers: () => ipcRenderer.invoke('get-peers'),
   getDisplayInfo: () => ipcRenderer.invoke('get-display-info'),

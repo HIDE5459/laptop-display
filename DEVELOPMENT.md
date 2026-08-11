@@ -41,6 +41,16 @@ Windows ノートをセカンドモニタとして使うためのデスクトッ
 映像は Chromium の WebRTC でハードウェアエンコードされ、2 台間を P2P で流れる。
 サーバーはオファー / アンサー / ICE の中継と、入力イベントの受け取りを行う。
 
+### 3.1.1 役割の決定
+
+優先順位は `--sender` / `--receiver` フラグ → 保存された設定
+(`<userData>/role.json`) → OS 既定 (macOS = sender / それ以外 = receiver)。
+UI から切り替えるとファイルに書いて `app.relaunch()` する。
+
+Mac 固有機能(仮想ディスプレイ・カーソル移動・Option タップ・入力の再現)は
+`process.platform === 'darwin'` のときだけ UI を表示するため、
+ホストが Windows の場合はミラーリング配信のみになる。
+
 ### 3.2 接続シーケンス
 
 1. 受信側が `hello` (role=receiver, 自分の画面情報を添付) → サーバーが送信側に `receiver-ready` を通知
