@@ -24,6 +24,7 @@ let wsAlive = false;
 let statsTimer = null;
 let lastBytes = 0;
 let lastTs = 0;
+let autoFullscreenDone = false;
 
 function showOverlay(msg) {
   overlay.classList.remove('hidden');
@@ -76,6 +77,12 @@ function connect(host) {
         overlay.classList.add('hidden');
         srcName.textContent = host.hostLabel ? `${host.hostLabel} から受信中` : `${host.ip} から受信中`;
         startStats();
+        // ディスプレイとして使うのが目的なので、映像が届いたら全画面にする。
+        // ユーザーが Esc で戻した場合は以降勝手に全画面にしない。
+        if (!autoFullscreenDone) {
+          autoFullscreenDone = true;
+          setFullscreen(true);
+        }
       };
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {

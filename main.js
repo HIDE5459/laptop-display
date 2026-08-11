@@ -187,7 +187,12 @@ ipcMain.handle('set-streaming', (_e, on) => {
 // desired を渡すとその状態にする。省略時はトグル。
 ipcMain.handle('toggle-fullscreen', (_e, desired) => {
   if (!win) return false;
-  win.setFullScreen(typeof desired === 'boolean' ? desired : !win.isFullScreen());
+  const next = typeof desired === 'boolean' ? desired : !win.isFullScreen();
+  win.setFullScreen(next);
+  // Windows では全画面にしてもタスクバーが前面に残ることがあるため、
+  // 全画面中は最前面に固定してタスクバーを覆う(解除時は元に戻す)。
+  win.setAlwaysOnTop(next, 'screen-saver');
+  if (next) win.focus();
   return win.isFullScreen();
 });
 
