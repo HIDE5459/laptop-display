@@ -63,9 +63,15 @@
       <div class="spinner"></div>
       <div id="overlayMsg">Mac 側 (LaptopDisplay) を探しています…</div>
       <div id="manualRow">
-        <input class="field" id="manualIp" placeholder="IP を直接入力 (例: 192.168.100.1)" size="26">
+        <input class="field" id="manualIp" placeholder="Mac の IP を入力 (例: 192.168.1.5)" size="26">
         <button class="btn" id="manualBtn">接続</button>
       </div>
+      <p class="hint" style="max-width:31rem;text-align:center;line-height:1.8">
+        Tailscale・VPN 経由やゲスト Wi-Fi では自動検出(ブロードキャスト)が通らないため、
+        Mac の IP を直接入力してください。Tailscale の場合は Mac で
+        <code>tailscale ip -4</code> を実行して出る 100.x.y.z です。
+        一度つながれば次回から自動で再接続します。
+      </p>
     </div>
 
     <div id="toolbar">

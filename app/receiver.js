@@ -10,6 +10,11 @@ const fsBtn = document.getElementById('fsBtn');
 const statsBtn = document.getElementById('statsBtn');
 const statsBox = document.getElementById('stats');
 
+// 一度つながった相手を覚えておき、次回起動時に自動で接続し直す。
+// Tailscale や VPN 経由では UDP ブロードキャストが通らず自動発見が働かないため、
+// 手動入力を毎回やらずに済むようにする。
+const HOST_KEY = 'laptopdisplay.lasthost';
+
 let ws = null;
 let pc = null;
 let currentHost = null; // { ip, port }
@@ -23,14 +28,31 @@ function showOverlay(msg) {
   overlayMsg.textContent = msg;
 }
 
+function saveHost(host) {
+  try {
+    localStorage.setItem(HOST_KEY, JSON.stringify({ ip: host.ip, port: host.port }));
+  } catch {}
+}
+
+function loadHost() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HOST_KEY));
+    if (saved && saved.ip) return { ip: saved.ip, port: saved.port || 3100 };
+  } catch {}
+  return null;
+}
+
 function connect(host) {
   currentHost = host;
   if (ws) { ws.onclose = null; ws.close(); }
   showOverlay(`${host.hostLabel || host.ip} に接続しています…`);
 
+  let everOpened = false;
   ws = new WebSocket(`ws://${host.ip}:${host.port}`);
   ws.onopen = () => {
     wsAlive = true;
+    everOpened = true;
+    saveHost(host);
     ws.send(JSON.stringify({ type: 'hello', role: 'receiver' }));
     showOverlay('Mac 側の配信開始を待っています…');
   };
@@ -73,7 +95,11 @@ function connect(host) {
   };
   ws.onclose = () => {
     wsAlive = false;
-    showOverlay('接続が切れました。再接続しています…');
+    showOverlay(
+      everOpened
+        ? '接続が切れました。再接続しています…'
+        : `${host.ip} に届きません。IP を確認してください(再試行中)`
+    );
     setTimeout(() => { if (currentHost && !wsAlive) connect(currentHost); }, 2000);
   };
 }
@@ -91,6 +117,15 @@ manualBtn.onclick = () => {
   if (ip) connect({ ip, port: 3100 });
 };
 manualIp.addEventListener('keydown', (e) => { if (e.key === 'Enter') manualBtn.onclick(); });
+
+// 前回つながった相手があれば、ブロードキャストを待たずにすぐ試す
+const remembered = loadHost();
+if (remembered) {
+  manualIp.value = remembered.ip;
+  connect(remembered);
+} else {
+  showOverlay('Mac 側 (LaptopDisplay) を探しています…');
+}
 
 // ---- 全画面・統計 ----
 
