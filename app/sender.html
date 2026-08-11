@@ -27,11 +27,13 @@
       <h2>仮想ディスプレイ(拡張モード)</h2>
       <div class="status-row">
         <select class="field" id="vdRes">
-          <option value="1920x1080" selected>1920 × 1080 (16:9)</option>
-          <option value="2560x1440">2560 × 1440 (16:9)</option>
-          <option value="1920x1200">1920 × 1200 (16:10)</option>
-          <option value="1680x1050">1680 × 1050 (16:10)</option>
-          <option value="1440x900">1440 × 900 (16:10)</option>
+          <optgroup label="汎用" id="vdPresetGroup">
+            <option value="1920x1080" selected>1920 × 1080 (16:9)</option>
+            <option value="2560x1440">2560 × 1440 (16:9)</option>
+            <option value="1920x1200">1920 × 1200 (16:10)</option>
+            <option value="1680x1050">1680 × 1050 (16:10)</option>
+            <option value="1440x900">1440 × 900 (16:10)</option>
+          </optgroup>
         </select>
         <button class="btn" id="vdBtn">仮想ディスプレイを作成</button>
         <span class="status-sub" id="vdSub"></span>

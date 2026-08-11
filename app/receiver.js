@@ -26,6 +26,7 @@ let statsTimer = null;
 let lastBytes = 0;
 let lastTs = 0;
 let autoFullscreenDone = false;
+let displayInfo = null; // { native, logical, scaleFactor, modes }
 
 function showOverlay(msg) {
   overlay.classList.remove('hidden');
@@ -57,11 +58,12 @@ function connect(host) {
     wsAlive = true;
     everOpened = true;
     saveHost(host);
-    // 自分の画面サイズ(物理ピクセル)を送る。送信側が
-    // 「この画面に合わせた解像度」の仮想ディスプレイを作れるようにするため。
+    // 自分の画面情報(実解像度と対応解像度の一覧)を送る。送信側が
+    // 「この画面に合う解像度」の仮想ディスプレイを作れるようにするため。
     ws.send(JSON.stringify({
       type: 'hello',
       role: 'receiver',
+      display: displayInfo,
       screen: {
         w: Math.round(window.screen.width * (window.devicePixelRatio || 1)),
         h: Math.round(window.screen.height * (window.devicePixelRatio || 1)),
@@ -125,26 +127,32 @@ function connect(host) {
 
 // ---- 自動発見(Electron のみ)/ 手動接続 ----
 
-if (window.native) {
-  window.native.onSenderDiscovered((found) => {
-    if (!wsAlive) connect({ ip: found.ip, port: found.port, hostLabel: found.host });
-  });
-}
-
 manualBtn.onclick = () => {
   const ip = manualIp.value.trim();
   if (ip) connect({ ip, port: 3100 });
 };
 manualIp.addEventListener('keydown', (e) => { if (e.key === 'Enter') manualBtn.onclick(); });
 
-// 前回つながった相手があれば、ブロードキャストを待たずにすぐ試す
-const remembered = loadHost();
-if (remembered) {
-  manualIp.value = remembered.ip;
-  connect(remembered);
-} else {
-  showOverlay('Mac 側 (LaptopDisplay) を探しています…');
-}
+// 画面情報を先に取得してから接続を始める(hello に含めて送るため)
+(async () => {
+  if (window.native) {
+    try {
+      displayInfo = await window.native.getDisplayInfo();
+    } catch {}
+    window.native.onSenderDiscovered((found) => {
+      if (!wsAlive) connect({ ip: found.ip, port: found.port, hostLabel: found.host });
+    });
+  }
+
+  // 前回つながった相手があれば、ブロードキャストを待たずにすぐ試す
+  const remembered = loadHost();
+  if (remembered) {
+    manualIp.value = remembered.ip;
+    connect(remembered);
+  } else {
+    showOverlay('Mac 側 (LaptopDisplay) を探しています…');
+  }
+})();
 
 // ---- 表示の合わせ方 ----
 // Mac 側と Windows 側で画面の縦横比が違うと、そのままでは上下(または左右)に

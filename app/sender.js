@@ -211,41 +211,45 @@ function setVdUi(active, note = '') {
   vdSub.textContent = note || (active ? '作成済み — 一覧から「LaptopDisplay」を選んでください' : '');
 }
 
-// 受信側の画面サイズから、仮想ディスプレイに適した解像度を求める。
-// 大きすぎるとエンコード負荷と遅延が増えるため 1920×1200 までに収める。
-function fitResolution(w, h) {
-  const MAX_W = 1920;
-  const MAX_H = 1200;
-  const scale = Math.min(1, MAX_W / w, MAX_H / h);
-  return [Math.round((w * scale) / 2) * 2, Math.round((h * scale) / 2) * 2];
-}
-
-// 受信側が接続したら「受信側の画面に合わせる」項目を一覧の先頭に用意する。
-// 縦横比が一致するので、受信側で黒帯が出なくなる。
+// 受信側(Windows)の画面が対応している解像度を一覧の先頭にグループとして並べる。
+// 縦横比がパネルと一致したものだけが届くので、選べば黒帯が出ない。
 let autoResChosen = false;
 
-function updateAutoResOption(screenInfo) {
-  const existing = vdRes.querySelector('option[data-auto]');
-  if (!screenInfo || !screenInfo.w || !screenInfo.h) {
-    if (existing) existing.remove();
-    return;
-  }
-  const [w, h] = fitResolution(screenInfo.w, screenInfo.h);
-  const value = `${w}x${h}`;
-  const label = `受信側の画面に合わせる (${w} × ${h})`;
+function updateAutoResOption(display) {
+  const oldGroup = vdRes.querySelector('optgroup[data-auto]');
+  if (oldGroup) oldGroup.remove();
+  if (!display || !display.native || !display.native.w) return;
 
-  if (existing) {
-    existing.value = value;
-    existing.textContent = label;
-  } else {
+  const native = display.native;
+  const modes = (display.modes && display.modes.length ? display.modes : [native])
+    .filter((m) => m.w > 0 && m.h > 0);
+
+  // 負荷と精細さのバランスが良いもの(1920 幅以下で最大)を推奨にする
+  const recommended = modes.find((m) => m.w <= 1920) || modes[modes.length - 1];
+
+  const group = document.createElement('optgroup');
+  group.dataset.auto = '1';
+  group.label = '受信側 (Windows) の画面が対応する解像度';
+
+  for (const m of modes) {
     const opt = document.createElement('option');
-    opt.dataset.auto = '1';
-    opt.value = value;
-    opt.textContent = label;
-    vdRes.prepend(opt);
+    opt.value = `${m.w}x${m.h}`;
+    let note = '';
+    if (m.w === native.w && m.h === native.h) {
+      note = ' — 最適(等倍・最も精細)';
+    } else if (recommended && m.w === recommended.w && m.h === recommended.h) {
+      note = ' — 推奨(負荷が軽い)';
+    }
+    opt.textContent = `${m.w} × ${m.h}${note}`;
+    group.appendChild(opt);
   }
-  // ユーザーが自分で選び直していなければ、この項目を既定にする
-  if (!autoResChosen && !vdActive) vdRes.value = value;
+
+  vdRes.prepend(group);
+
+  // ユーザーが自分で選び直していなければ推奨を既定にする
+  if (!autoResChosen && !vdActive && recommended) {
+    vdRes.value = `${recommended.w}x${recommended.h}`;
+  }
 }
 
 vdRes.addEventListener('change', () => {
@@ -312,7 +316,7 @@ async function tryAutoStart() {
       const opt = document.createElement('option');
       opt.value = savedRes;
       opt.textContent = `${w} × ${h}`;
-      vdRes.prepend(opt);
+      (vdRes.querySelector('#vdPresetGroup') || vdRes).prepend(opt);
     }
     vdRes.value = savedRes;
     autoResChosen = true; // 記憶した設定を自動項目で上書きしない

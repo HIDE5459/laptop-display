@@ -9,7 +9,7 @@ const { app, BrowserWindow, Menu, ipcMain, desktopCapturer, clipboard, powerSave
 const path = require('path');
 const os = require('os');
 const dgram = require('dgram');
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const { startSignaling, lanAddresses } = require('./lib/signaling');
 
 const SIGNAL_PORT = 3100;
@@ -122,6 +122,76 @@ ipcMain.handle('get-sources', async () => {
 });
 
 ipcMain.handle('get-peers', () => peerState);
+
+// ---- 受信側の画面情報 ----
+// Windows が対応している解像度を列挙して、送信側が仮想ディスプレイの
+// 解像度として選べるようにする。ハードウェア固有で変わらないのでキャッシュする。
+let cachedModes = null;
+
+function windowsSupportedModes() {
+  if (process.platform !== 'win32') return [];
+  if (cachedModes) return cachedModes;
+  try {
+    const ps =
+      'Get-CimInstance -ClassName CIM_VideoControllerResolution | ' +
+      'ForEach-Object { "$($_.HorizontalResolution)x$($_.VerticalResolution)" } | ' +
+      'Sort-Object -Unique';
+    const out = execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps], {
+      timeout: 8000,
+      encoding: 'utf8',
+      windowsHide: true,
+    });
+    cachedModes = out
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => /^\d+x\d+$/.test(line))
+      .map((line) => {
+        const [w, h] = line.split('x').map(Number);
+        return { w, h };
+      });
+  } catch {
+    cachedModes = [];
+  }
+  return cachedModes;
+}
+
+ipcMain.handle('get-display-info', () => {
+  const { screen } = require('electron');
+  const display = screen.getPrimaryDisplay();
+  const scaleFactor = display.scaleFactor || 1;
+  const native = {
+    w: Math.round(display.size.width * scaleFactor),
+    h: Math.round(display.size.height * scaleFactor),
+  };
+  const aspect = native.w / native.h;
+
+  // 実際に対応している解像度のうち、パネルと同じ縦横比のものだけを使う
+  // (比率が違うものを選ぶと黒帯や引き伸ばしになるため)
+  let modes = windowsSupportedModes().filter(
+    (m) => m.w <= native.w && m.w >= 1024 && Math.abs(m.w / m.h - aspect) < 0.02
+  );
+
+  // 列挙できなかった場合は、パネルの比率から一般的な段階を組み立てる
+  if (!modes.length) {
+    modes = [2560, 1920, 1680, 1440, 1280]
+      .filter((w) => w <= native.w)
+      .map((w) => ({ w, h: Math.round(w / aspect / 2) * 2 }));
+  }
+
+  if (!modes.some((m) => m.w === native.w && m.h === native.h)) modes.push(native);
+
+  const seen = new Set();
+  modes = modes
+    .sort((a, b) => b.w - a.w)
+    .filter((m) => {
+      const key = `${m.w}x${m.h}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+  return { native, logical: { w: display.size.width, h: display.size.height }, scaleFactor, modes };
+});
 
 ipcMain.handle('copy-text', (_e, text) => clipboard.writeText(String(text)));
 
