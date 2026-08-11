@@ -211,6 +211,47 @@ function setVdUi(active, note = '') {
   vdSub.textContent = note || (active ? '作成済み — 一覧から「LaptopDisplay」を選んでください' : '');
 }
 
+// 受信側の画面サイズから、仮想ディスプレイに適した解像度を求める。
+// 大きすぎるとエンコード負荷と遅延が増えるため 1920×1200 までに収める。
+function fitResolution(w, h) {
+  const MAX_W = 1920;
+  const MAX_H = 1200;
+  const scale = Math.min(1, MAX_W / w, MAX_H / h);
+  return [Math.round((w * scale) / 2) * 2, Math.round((h * scale) / 2) * 2];
+}
+
+// 受信側が接続したら「受信側の画面に合わせる」項目を一覧の先頭に用意する。
+// 縦横比が一致するので、受信側で黒帯が出なくなる。
+let autoResChosen = false;
+
+function updateAutoResOption(screenInfo) {
+  const existing = vdRes.querySelector('option[data-auto]');
+  if (!screenInfo || !screenInfo.w || !screenInfo.h) {
+    if (existing) existing.remove();
+    return;
+  }
+  const [w, h] = fitResolution(screenInfo.w, screenInfo.h);
+  const value = `${w}x${h}`;
+  const label = `受信側の画面に合わせる (${w} × ${h})`;
+
+  if (existing) {
+    existing.value = value;
+    existing.textContent = label;
+  } else {
+    const opt = document.createElement('option');
+    opt.dataset.auto = '1';
+    opt.value = value;
+    opt.textContent = label;
+    vdRes.prepend(opt);
+  }
+  // ユーザーが自分で選び直していなければ、この項目を既定にする
+  if (!autoResChosen && !vdActive) vdRes.value = value;
+}
+
+vdRes.addEventListener('change', () => {
+  autoResChosen = true;
+});
+
 vdBtn.onclick = async () => {
   vdBtn.disabled = true;
   if (!vdActive) {
@@ -264,8 +305,17 @@ async function tryAutoStart() {
 
   // 前回仮想ディスプレイを使っていたなら先に再作成する
   if (saved.vd && info.platform === 'darwin') {
-    vdRes.value = saved.vdRes || '1920x1080';
-    const [w, h] = vdRes.value.split('x').map(Number);
+    const savedRes = /^\d+x\d+$/.test(saved.vdRes || '') ? saved.vdRes : '1920x1080';
+    const [w, h] = savedRes.split('x').map(Number);
+    // 保存された解像度が一覧になければ項目として足してから選ぶ
+    if (![...vdRes.options].some((o) => o.value === savedRes)) {
+      const opt = document.createElement('option');
+      opt.value = savedRes;
+      opt.textContent = `${w} × ${h}`;
+      vdRes.prepend(opt);
+    }
+    vdRes.value = savedRes;
+    autoResChosen = true; // 記憶した設定を自動項目で上書きしない
     const res = await window.native.virtualDisplay({ on: true, width: w, height: h });
     if (res.ok) setVdUi(true);
   }
@@ -318,10 +368,12 @@ async function tryAutoStart() {
 
   window.native.onPeersChanged((peers) => {
     receiverConnected = peers.receiver;
+    updateAutoResOption(peers.receiverScreen);
     updateStatus();
   });
   const peers = await window.native.getPeers();
   receiverConnected = peers.receiver;
+  updateAutoResOption(peers.receiverScreen);
 
   connectSignaling();
   await refreshSources();

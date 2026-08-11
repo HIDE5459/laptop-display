@@ -27,9 +27,11 @@
       <h2>仮想ディスプレイ(拡張モード)</h2>
       <div class="status-row">
         <select class="field" id="vdRes">
-          <option value="1920x1080" selected>1920 × 1080 (推奨)</option>
-          <option value="2560x1440">2560 × 1440</option>
-          <option value="1680x1050">1680 × 1050</option>
+          <option value="1920x1080" selected>1920 × 1080 (16:9)</option>
+          <option value="2560x1440">2560 × 1440 (16:9)</option>
+          <option value="1920x1200">1920 × 1200 (16:10)</option>
+          <option value="1680x1050">1680 × 1050 (16:10)</option>
+          <option value="1440x900">1440 × 900 (16:10)</option>
         </select>
         <button class="btn" id="vdBtn">仮想ディスプレイを作成</button>
         <span class="status-sub" id="vdSub"></span>
@@ -38,7 +40,10 @@
         作成すると Mac に「2 枚目のモニタ」が追加され、下の一覧に
         <b>LaptopDisplay</b> という画面が現れます。それを選んで配信すると、
         ウィンドウをドラッグして移せる拡張ディスプレイになります。
-        ミラーリング(複製)でよければ作成せず今の画面を選んでください。
+        ミラーリング(複製)でよければ作成せず今の画面を選んでください。<br>
+        受信側アプリが接続していると、その画面にぴったり合う解像度が
+        <b>「受信側の画面に合わせる」</b>として一覧の先頭に出ます。
+        縦横比が合わないと受信側で黒帯が出るため、通常はこれを選んでください。
       </p>
     </section>
 

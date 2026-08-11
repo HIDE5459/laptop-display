@@ -57,7 +57,16 @@ function connect(host) {
     wsAlive = true;
     everOpened = true;
     saveHost(host);
-    ws.send(JSON.stringify({ type: 'hello', role: 'receiver' }));
+    // 自分の画面サイズ(物理ピクセル)を送る。送信側が
+    // 「この画面に合わせた解像度」の仮想ディスプレイを作れるようにするため。
+    ws.send(JSON.stringify({
+      type: 'hello',
+      role: 'receiver',
+      screen: {
+        w: Math.round(window.screen.width * (window.devicePixelRatio || 1)),
+        h: Math.round(window.screen.height * (window.devicePixelRatio || 1)),
+      },
+    }));
     showOverlay('Mac 側の配信開始を待っています…');
   };
   ws.onmessage = async (ev) => {
