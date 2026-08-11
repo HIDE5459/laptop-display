@@ -243,9 +243,20 @@ function showRing(x, y) {
   }, 700);
 }
 
+// 本体 (メイン) を先頭にし、残りは左から右の順に並べる。
+// 「1 回タップ = メイン」を安定させるため、番号指定はこの順序を使う。
+function orderedDisplays() {
+  const primary = screen.getPrimaryDisplay();
+  const rest = screen
+    .getAllDisplays()
+    .filter((d) => d.id !== primary.id)
+    .sort((a, b) => a.bounds.x - b.bounds.x);
+  return [primary, ...rest];
+}
+
 // target: 'next' で次のディスプレイ、数値でその番号のディスプレイ (0 始まり)
 function cursorToDisplay(target) {
-  const displays = screen.getAllDisplays();
+  const displays = orderedDisplays();
   if (displays.length < 2) return;
 
   let dest;
@@ -293,6 +304,98 @@ function registerCursorHotkeys(config) {
 
   return { ok: failed.length === 0, registered: cursorHotkeys, failed };
 }
+
+// ---- Option キーのタップでディスプレイを切り替える ----
+// 1 回タップ = メイン (本体)、2 回 = 2 枚目、3 回 = 3 枚目。
+// 修飾キー単独の押下は globalShortcut では取れないため、
+// CGEventTap を使うヘルパーを常駐させて回数を受け取る。
+
+let tapProc = null;
+let tapStatus = { running: false, error: null };
+
+function stopModifierTap() {
+  if (tapProc) {
+    tapProc.kill();
+    tapProc = null;
+  }
+  tapStatus = { running: false, error: null };
+}
+
+function startModifierTap({ side = 'right', windowSec = 0.35 } = {}) {
+  stopModifierTap();
+  if (process.platform !== 'darwin') {
+    tapStatus = { running: false, error: 'macOS でのみ使えます' };
+    return tapStatus;
+  }
+
+  const child = spawn(helperPath('ModifierTap'), [side, String(windowSec)], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  let buffer = '';
+  child.stdout.on('data', (chunk) => {
+    buffer += chunk.toString();
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      const text = line.trim();
+      if (text === 'ready') {
+        tapStatus = { running: true, error: null };
+        if (win) win.webContents.send('tap-status', tapStatus);
+      } else if (text === 'error:permission') {
+        tapStatus = { running: false, error: 'permission' };
+        if (win) win.webContents.send('tap-status', tapStatus);
+      } else if (text.startsWith('tap:')) {
+        const count = parseInt(text.slice(4), 10);
+        if (count >= 1) cursorToDisplay(count - 1);
+      }
+    }
+  });
+
+  child.on('error', (err) => {
+    tapStatus = { running: false, error: err.message };
+    if (win) win.webContents.send('tap-status', tapStatus);
+  });
+  child.on('exit', () => {
+    if (tapProc === child) {
+      tapProc = null;
+      if (tapStatus.error === null) tapStatus = { running: false, error: 'exited' };
+      if (win) win.webContents.send('tap-status', tapStatus);
+    }
+  });
+
+  tapProc = child;
+  return tapStatus;
+}
+
+ipcMain.handle('set-modifier-tap', (_e, config) => {
+  if (!config || !config.enabled) {
+    stopModifierTap();
+    return { running: false, error: null };
+  }
+  return startModifierTap(config);
+});
+
+ipcMain.handle('get-tap-status', () => tapStatus);
+
+// アクセシビリティ(入力監視)の許可状態。prompt=true で許可ダイアログを出す。
+ipcMain.handle('check-accessibility', (_e, prompt) => {
+  if (process.platform !== 'darwin') return true;
+  try {
+    return systemPreferences.isTrustedAccessibilityClient(!!prompt);
+  } catch {
+    return false;
+  }
+});
+
+ipcMain.handle('open-accessibility-settings', () => {
+  if (process.platform !== 'darwin') return;
+  return shell.openExternal(
+    'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
+  );
+});
+
+app.on('will-quit', stopModifierTap);
 
 ipcMain.handle('set-cursor-hotkeys', (_e, config) => registerCursorHotkeys(config));
 ipcMain.handle('cursor-to-next-display', () => cursorToDisplay('next'));
@@ -432,11 +535,15 @@ app.on('will-quit', () => {
   if (vdProc) vdProc.kill();
 });
 
-// 配信中はスリープ・省電力によるスローダウンを抑止する
+// 受信側は Mac 側で操作しているため入力が無く、放置と判断されて
+// 画面が消えたりスリープに入ってしまう。表示中はそれを抑止する。
+// 送信側は配信処理が省電力で間引かれるのを防ぐ。
 let blockerId = null;
 ipcMain.handle('set-streaming', (_e, on) => {
   if (on && blockerId === null) {
-    blockerId = powerSaveBlocker.start('prevent-app-suspension');
+    blockerId = powerSaveBlocker.start(
+      role === 'receiver' ? 'prevent-display-sleep' : 'prevent-app-suspension'
+    );
   } else if (!on && blockerId !== null) {
     powerSaveBlocker.stop(blockerId);
     blockerId = null;

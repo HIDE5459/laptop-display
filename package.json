@@ -56,6 +56,10 @@
         {
           "from": "build/CursorMove",
           "to": "CursorMove"
+        },
+        {
+          "from": "build/ModifierTap",
+          "to": "ModifierTap"
         }
       ]
     },

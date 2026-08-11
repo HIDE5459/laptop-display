@@ -66,6 +66,30 @@
         <button class="btn" id="curTestBtn">今すぐ移動</button>
       </div>
       <div class="status-sub" id="curSub" style="margin-top:8px"></div>
+
+      <div style="border-top:1px solid var(--border); margin:14px 0 12px"></div>
+
+      <div class="status-row">
+        <label class="status-sub" style="display:flex;align-items:center;gap:7px;cursor:pointer">
+          <input type="checkbox" id="tapEnabled">
+          Option キーのタップで切り替える
+        </label>
+        <select class="field" id="tapSide">
+          <option value="right" selected>右 Option のみ</option>
+          <option value="left">左 Option のみ</option>
+          <option value="both">左右どちらでも</option>
+        </select>
+        <button class="btn" id="tapPermBtn" style="display:none">アクセシビリティを許可</button>
+      </div>
+      <div class="status-sub" id="tapSub" style="margin-top:8px"></div>
+      <p class="hint">
+        <b>1 回</b>タップで本体 (メイン)、<b>2 回</b>で 2 枚目、<b>3 回</b>で 3 枚目へ移動します。
+        キー入力を監視するため <b>アクセシビリティの許可</b>が必要です。
+        左 Option は <code>⌥+クリック</code> や特殊文字の入力で使うため、
+        既定は誤爆しにくい<b>右 Option のみ</b>です。<br>
+        判定のため、タップから移動までに約 0.35 秒かかります(連続タップを待つ必要があるため)。
+      </p>
+
       <p class="hint">
         押すたびに次のディスプレイの中央へカーソルが飛び、移動先で一瞬リングが表示されます。
         <b>Control+Alt+1 / 2 / 3</b> で画面を直接指定することもできます(こちらは固定)。<br>

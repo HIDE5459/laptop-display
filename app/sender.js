@@ -367,6 +367,84 @@ curCycleKey.addEventListener('keydown', (e) => {
 });
 curTestBtn.onclick = () => window.native.cursorToNextDisplay();
 
+// ---- Option キーのタップで切り替え ----
+
+const TAP_KEY = 'laptopdisplay.modifiertap';
+const tapEnabled = document.getElementById('tapEnabled');
+const tapSide = document.getElementById('tapSide');
+const tapPermBtn = document.getElementById('tapPermBtn');
+const tapSub = document.getElementById('tapSub');
+
+function describeTapStatus(status) {
+  if (!tapEnabled.checked) {
+    tapPermBtn.style.display = 'none';
+    return 'Option タップは無効です';
+  }
+  if (status.running) {
+    tapPermBtn.style.display = 'none';
+    const side = tapSide.options[tapSide.selectedIndex].textContent;
+    return `${side} のタップで移動できます(1 回 = 本体、2 回 = 2 枚目、3 回 = 3 枚目)`;
+  }
+  if (status.error === 'permission') {
+    tapPermBtn.style.display = '';
+    return 'アクセシビリティの許可がありません。許可したあと、この設定をもう一度オンにしてください。';
+  }
+  tapPermBtn.style.display = '';
+  return `キー監視を開始できませんでした${status.error ? ` (${status.error})` : ''}`;
+}
+
+async function applyModifierTap() {
+  const config = { enabled: tapEnabled.checked, side: tapSide.value, windowSec: 0.35 };
+  try {
+    localStorage.setItem(TAP_KEY, JSON.stringify(config));
+  } catch {}
+
+  if (config.enabled) {
+    // 許可が無い場合はここでダイアログを出す
+    const trusted = await window.native.checkAccessibility(true);
+    if (!trusted) {
+      tapSub.textContent =
+        'アクセシビリティの許可が必要です。設定で LaptopDisplay を許可し、アプリを再起動してからもう一度オンにしてください。';
+      tapPermBtn.style.display = '';
+      return;
+    }
+  }
+
+  const status = await window.native.setModifierTap(config);
+  tapSub.textContent = describeTapStatus(status);
+}
+
+tapEnabled.onchange = applyModifierTap;
+tapSide.onchange = () => {
+  if (tapEnabled.checked) applyModifierTap();
+};
+tapPermBtn.onclick = () => window.native.openAccessibilitySettings();
+
+window.native.onTapStatus((status) => {
+  tapSub.textContent = describeTapStatus(status);
+});
+
+async function initModifierTap() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(TAP_KEY));
+    if (saved) {
+      tapEnabled.checked = !!saved.enabled;
+      if (saved.side) tapSide.value = saved.side;
+    }
+  } catch {}
+
+  if (!tapEnabled.checked) {
+    tapSub.textContent = describeTapStatus({ running: false, error: null });
+    return;
+  }
+  const status = await window.native.setModifierTap({
+    enabled: true,
+    side: tapSide.value,
+    windowSec: 0.35,
+  });
+  tapSub.textContent = describeTapStatus(status);
+}
+
 async function initCursorHotkeys() {
   try {
     const saved = JSON.parse(localStorage.getItem(CURSOR_KEY));
@@ -454,6 +532,7 @@ async function tryAutoStart() {
     vdCard.style.display = '';
     cursorCard.style.display = '';
     await initCursorHotkeys();
+    await initModifierTap();
     window.native.onVirtualDisplayChanged((active) => {
       if (!active && vdActive) setVdUi(false, '仮想ディスプレイが終了しました');
     });

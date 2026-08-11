@@ -89,6 +89,8 @@ function connect(host) {
         overlay.classList.add('hidden');
         srcName.textContent = host.hostLabel ? `${host.hostLabel} から受信中` : `${host.ip} から受信中`;
         startStats();
+        // この PC では誰も操作しないため、放置と判断されて画面が消えるのを防ぐ
+        if (window.native) window.native.setStreaming(true);
         // ディスプレイとして使うのが目的なので、映像が届いたら全画面にする。
         // ユーザーが Esc で戻した場合は以降勝手に全画面にしない。
         if (!autoFullscreenDone) {
@@ -99,6 +101,7 @@ function connect(host) {
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
           showOverlay('接続が切れました。再接続を待っています…');
+          if (window.native) window.native.setStreaming(false);
         }
       };
       await pc.setRemoteDescription(m.description);
@@ -112,6 +115,7 @@ function connect(host) {
       ws.send(JSON.stringify({ type: 'receiver-ready' }));
     } else if (m.type === 'peer-left') {
       showOverlay('Mac 側の配信終了を検知しました。再開を待っています…');
+      if (window.native) window.native.setStreaming(false);
     }
   };
   ws.onclose = () => {
