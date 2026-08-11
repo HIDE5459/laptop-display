@@ -1,5 +1,7 @@
 // 受信側 UI — 送信側の自動発見・WebRTC 受信・統計表示
 
+const stage = document.getElementById('stage');
+const toolbar = document.getElementById('toolbar');
 const video = document.getElementById('screen');
 const overlay = document.getElementById('overlay');
 const overlayMsg = document.getElementById('overlayMsg');
@@ -127,17 +129,42 @@ if (remembered) {
   showOverlay('Mac 側 (LaptopDisplay) を探しています…');
 }
 
+// ---- ツールバーの自動非表示 ----
+// マウスを動かしたときだけ出し、一定時間動かなければツールバーとカーソルを隠す。
+// 全画面表示中に画面の端へマウスが乗っただけで出続けるのを防ぐ。
+
+const IDLE_MS = 2000;
+let idleTimer = null;
+
+function revealChrome() {
+  toolbar.classList.add('show');
+  stage.classList.remove('idle');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    toolbar.classList.remove('show');
+    stage.classList.add('idle');
+  }, IDLE_MS);
+}
+
+document.addEventListener('mousemove', revealChrome);
+stage.classList.add('idle');
+
 // ---- 全画面・統計 ----
 
-async function toggleFullscreen() {
-  if (window.native) await window.native.toggleFullscreen();
-  else if (document.fullscreenElement) document.exitFullscreen();
-  else document.documentElement.requestFullscreen();
+async function setFullscreen(desired) {
+  if (window.native) return window.native.toggleFullscreen(desired);
+  if (desired === false) return document.exitFullscreen();
+  if (desired === true) return document.documentElement.requestFullscreen();
+  if (document.fullscreenElement) return document.exitFullscreen();
+  return document.documentElement.requestFullscreen();
 }
-fsBtn.onclick = toggleFullscreen;
-document.addEventListener('dblclick', toggleFullscreen);
+fsBtn.onclick = () => setFullscreen();
+document.addEventListener('dblclick', () => setFullscreen());
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+  // IP 入力中のキー入力はショートカットとして扱わない
+  if (e.target instanceof HTMLInputElement) return;
+  if (e.key === 'f' || e.key === 'F') setFullscreen();
+  if (e.key === 'Escape') setFullscreen(false);
   if (e.key === 's' || e.key === 'S') statsBox.classList.toggle('show');
 });
 statsBtn.onclick = () => statsBox.classList.toggle('show');

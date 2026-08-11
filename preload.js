@@ -5,7 +5,7 @@ contextBridge.exposeInMainWorld('native', {
   getSources: () => ipcRenderer.invoke('get-sources'),
   getPeers: () => ipcRenderer.invoke('get-peers'),
   copyText: (text) => ipcRenderer.invoke('copy-text', text),
-  toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
+  toggleFullscreen: (desired) => ipcRenderer.invoke('toggle-fullscreen', desired),
   setStreaming: (on) => ipcRenderer.invoke('set-streaming', on),
   virtualDisplay: (opts) => ipcRenderer.invoke('virtual-display', opts),
   onVirtualDisplayChanged: (cb) => ipcRenderer.on('virtual-display-changed', (_e, active) => cb(active)),

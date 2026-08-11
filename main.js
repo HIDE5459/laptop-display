@@ -5,7 +5,7 @@
 //   送信側: シグナリングサーバーを内蔵起動し、UDP ビーコンで自分の存在を通知する
 //   受信側: UDP ビーコンを待ち受け、送信側を見つけたら自動接続する
 
-const { app, BrowserWindow, ipcMain, desktopCapturer, clipboard, powerSaveBlocker } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, desktopCapturer, clipboard, powerSaveBlocker } = require('electron');
 const path = require('path');
 const os = require('os');
 const dgram = require('dgram');
@@ -44,6 +44,13 @@ function createWindow() {
       backgroundThrottling: false,
     },
   });
+  // Windows / Linux ではメニューバーを完全に消す(Alt キーでも出てこないようにする)。
+  // macOS はメニューを消すと ⌘Q などの標準ショートカットも失われるため残す。
+  if (process.platform !== 'darwin') {
+    win.setMenuBarVisibility(false);
+    win.setMenu(null);
+  }
+
   win.loadFile(path.join(__dirname, 'app', `${role}.html`));
   win.on('closed', () => (win = null));
 }
@@ -177,9 +184,11 @@ ipcMain.handle('set-streaming', (_e, on) => {
   }
 });
 
-ipcMain.handle('toggle-fullscreen', () => {
-  if (win) win.setFullScreen(!win.isFullScreen());
-  return win ? win.isFullScreen() : false;
+// desired を渡すとその状態にする。省略時はトグル。
+ipcMain.handle('toggle-fullscreen', (_e, desired) => {
+  if (!win) return false;
+  win.setFullScreen(typeof desired === 'boolean' ? desired : !win.isFullScreen());
+  return win.isFullScreen();
 });
 
 // ---- ライフサイクル ----
@@ -196,6 +205,7 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
+    if (process.platform !== 'darwin') Menu.setApplicationMenu(null);
     if (role === 'sender') startSenderServices();
     else startReceiverServices();
     createWindow();
