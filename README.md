@@ -19,8 +19,16 @@ Windows ノートをサブディスプレイとして使うためのデスクト
 
 ### 署名・公証の設定 (Apple Developer Program 加入者向け)
 
-以下の 5 つを GitHub の **Settings → Secrets and variables → Actions** に登録すると、
-CI が自動で署名 + 公証まで行い、警告なしで開けるアプリになります。
+Mac で次を実行すると、証明書の確認から GitHub シークレットの登録、
+ビルドの開始までまとめて行えます(証明書の .p12 書き出しだけは
+秘密鍵をキーチェーンの外に出す操作なので、キーチェーンアクセスでの手作業が必要)。
+
+```bash
+bash scripts/setup-signing.sh
+```
+
+手動で登録する場合は、以下の 5 つを GitHub の
+**Settings → Secrets and variables → Actions** に登録します。
 未登録の場合は未署名ビルドになります(下記の手動対処が必要)。
 
 | シークレット名 | 中身 |
