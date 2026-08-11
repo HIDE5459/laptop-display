@@ -6,9 +6,13 @@ Windows ノートをサブディスプレイとして使うためのデスクト
 映像は 2 台間を P2P(ハードウェアエンコード)で送るため、
 同じ Wi-Fi / LAN 内なら遅延はおおむね 50〜150ms 程度です。
 
-- **Mac 用 (送信側)**: `.dmg` — 画面選択(サムネイル付き)・仮想ディスプレイ作成・画質モード切替
-- **Windows 用 (受信側)**: `.exe` — 送信側を自動発見して自動接続・全画面表示・統計オーバーレイ
+- **Mac 用 (送信側)**: `.dmg` — 画面選択・仮想ディスプレイ作成・画質モード切替・カーソル移動
+- **Windows 用 (受信側)**: `.exe` — 自動発見して自動接続・全画面表示・統計表示・トレイ常駐
+- **Windows 側のキーボードとマウスで Mac を操作**できます(簡易 KVM)
+- **拡張ディスプレイ**として使えます(外部アプリ不要。仮想ディスプレイを内蔵)
 - アプリを使わず**ブラウザだけ**でも動きます(後述)
+
+主な機能と設計の詳細は [DEVELOPMENT.md](DEVELOPMENT.md) にまとめてあります。
 
 ## ダウンロード
 
@@ -17,41 +21,12 @@ Windows ノートをサブディスプレイとして使うためのデスクト
 - `LaptopDisplay-1.0.0-arm64.dmg` — Mac (Apple Silicon) 用
 - `LaptopDisplay.Setup.1.0.0.exe` — Windows 10/11 (x64) 用
 
-### 署名・公証の設定 (Apple Developer Program 加入者向け)
-
-Mac で次を実行すると、証明書の確認から GitHub シークレットの登録、
-ビルドの開始までまとめて行えます(証明書の .p12 書き出しだけは
-秘密鍵をキーチェーンの外に出す操作なので、キーチェーンアクセスでの手作業が必要)。
-
-```bash
-bash scripts/setup-signing.sh
-```
-
-手動で登録する場合は、以下の 5 つを GitHub の
-**Settings → Secrets and variables → Actions** に登録します。
-未登録の場合は未署名ビルドになります(下記の手動対処が必要)。
-
-| シークレット名 | 中身 |
-|---|---|
-| `MAC_CSC_LINK` | Developer ID Application 証明書 (.p12) を base64 化した文字列 |
-| `MAC_CSC_KEY_PASSWORD` | .p12 に付けたパスワード |
-| `APPLE_ID` | Apple ID のメールアドレス |
-| `APPLE_APP_SPECIFIC_PASSWORD` | appleid.apple.com で発行する「App 用パスワード」 |
-| `APPLE_TEAM_ID` | Team ID (10 文字。developer.apple.com の Membership で確認) |
-
-証明書の書き出し手順:
-
-1. Xcode → Settings → Accounts → Manage Certificates で
-   **Developer ID Application** を作成(なければ `+` から)
-2. キーチェーンアクセスで該当証明書を右クリック →「書き出す」→ .p12 形式で保存
-3. `base64 -i Certificates.p12 | pbcopy` で base64 にしてコピー
-
 ### Mac: インストールスクリプトを使うのが簡単
 
-Apple Developer Program に登録していないため、このアプリは**公証 (notarization) を
-受けていません**。そのため dmg をダウンロードしたまま開くと、macOS が
-「マルウェアが含まれている可能性がある」としてブロックします(実際にマルウェアが
-入っているわけではなく、公証の照会先に情報がないためこの表示になります)。
+このアプリは**署名・公証 (notarization) をしていません**。そのため dmg を
+ダウンロードしたまま開くと、macOS が「マルウェアが含まれている可能性がある」として
+ブロックします(実際にマルウェアが入っているわけではなく、公証の照会先に
+情報がないためこの表示になります)。
 
 取得・インストール・隔離属性の解除・起動をまとめて行うスクリプトを用意してあります。
 
@@ -82,6 +57,35 @@ macOS の警告文と原因の対応:
 | 開発元を確認できません | 公証なし | システム設定 → プライバシーとセキュリティ →「このまま開く」 |
 
 **Windows**: SmartScreen の警告で「詳細情報」→「実行」。
+
+### 署名・公証の設定 (Apple Developer Program 加入者向け)
+
+Mac で次を実行すると、証明書の確認から GitHub シークレットの登録、
+ビルドの開始までまとめて行えます(証明書の .p12 書き出しだけは
+秘密鍵をキーチェーンの外に出す操作なので、キーチェーンアクセスでの手作業が必要)。
+
+```bash
+bash scripts/setup-signing.sh
+```
+
+手動で登録する場合は、以下の 5 つを GitHub の
+**Settings → Secrets and variables → Actions** に登録します。
+未登録の場合は未署名ビルドになります(下記の手動対処が必要)。
+
+| シークレット名 | 中身 |
+|---|---|
+| `MAC_CSC_LINK` | Developer ID Application 証明書 (.p12) を base64 化した文字列 |
+| `MAC_CSC_KEY_PASSWORD` | .p12 に付けたパスワード |
+| `APPLE_ID` | Apple ID のメールアドレス |
+| `APPLE_APP_SPECIFIC_PASSWORD` | appleid.apple.com で発行する「App 用パスワード」 |
+| `APPLE_TEAM_ID` | Team ID (10 文字。developer.apple.com の Membership で確認) |
+
+証明書の書き出し手順:
+
+1. Xcode → Settings → Accounts → Manage Certificates で
+   **Developer ID Application** を作成(なければ `+` から)
+2. キーチェーンアクセスで該当証明書を右クリック →「書き出す」→ .p12 形式で保存
+3. `base64 -i Certificates.p12 | pbcopy` で base64 にしてコピー
 
 ## 使い方
 
@@ -252,6 +256,10 @@ Mac に転送して操作できます(簡易 KVM)。
 - Alt+Tab など **Windows 自身が処理するキーは転送できません**
 - 転送モード中はローカルのショートカット (F / S / Z / Esc) は無効になり、
   F9 だけが効きます
+- 受付は**アプリ起動時は必ずオフ**です(オンのまま復元すると、Mac を操作できない
+  状態で起動しかねないため)
+- **脱出用: `Control+Option+I`** — Windows 側の操作で Mac のカーソルが奪われて
+  マウスで解除できなくなったときは、Mac のキーボードでこれを押すと強制解除できます
 
 ## 常駐させる
 
@@ -278,21 +286,34 @@ Mac に転送して操作できます(簡易 KVM)。
 
 - 1 対 1 専用(送信 1・受信 1)。3〜4 台対応は将来の拡張案(`DEVELOPMENT.md` 参照)
 - 音声は転送しません(画面のみ)
-- Windows 側からのマウス・キーボード操作はできません(表示専用)
-- 接続は LAN 内前提です。インターネット越しの利用は想定していません
+- 入力転送は配信対象が**画面**のときだけ有効です(ウィンドウ単体では座標が対応しません)
+- Alt+Tab など Windows 自身が処理するキーは転送できません
+- 基本は LAN 内前提です。Tailscale 経由でも動きますが、ブロードキャストが通らないため
+  初回だけ IP の手動入力が必要です(以降は記憶して自動再接続)
+- 未署名ビルドのため、**更新するたびに macOS の権限を入れ直す**必要があります
+  (署名すれば不要。上記「署名・公証の設定」参照)
+- 仮想ディスプレイは非公開 API を使うため、macOS のメジャーアップデートで
+  動かなくなる可能性があります
 
 ## 構成
 
 ```
-├── main.js              # Electron メイン (役割自動判定・UDP 自動発見・画面キャプチャ)
+├── main.js                      # Electron メイン (役割判定・発見・キャプチャ・入力再現・権限)
 ├── preload.js
-├── lib/signaling.js     # シグナリングサーバー (アプリ・ブラウザ版で共用)
-├── server.js            # ブラウザ版の起動スクリプト
-├── app/                 # アプリ UI (送信・受信)
-├── public/              # ブラウザ版 UI
-├── tools/make-icon.js   # アイコン生成 (依存ライブラリなし)
-├── tools/mac/virtual-display.m  # 仮想ディスプレイヘルパー (CGVirtualDisplay)
+├── lib/signaling.js             # シグナリングサーバー (アプリ・ブラウザ版で共用)
+├── lib/keymap.js                # KeyboardEvent.code → macOS 仮想キーコード
+├── server.js                    # ブラウザ版の起動スクリプト
+├── app/                         # アプリ UI (送信・受信)
+├── public/                      # ブラウザ版 UI
+├── tools/after-pack.js          # 未署名ビルド時の ad-hoc 署名
+├── tools/make-icon.js           # アイコン生成 (依存ライブラリなし)
+├── tools/mac/virtual-display.m  # 仮想ディスプレイ (CGVirtualDisplay)
+├── tools/mac/cursor-move.m      # カーソル移動 (CGWarpMouseCursorPosition)
+├── tools/mac/modifier-tap.m     # Option 単独タップの検出 (CGEventTap)
+├── tools/mac/input-inject.m     # 受信側の入力を CGEvent として再現
+├── scripts/install-mac.sh       # 取得・インストール・隔離解除・起動を一括で
+├── scripts/setup-signing.sh     # 署名・公証用シークレットの登録を補助
 └── build/icon.png
 ```
 
-設計の詳細・開発の経緯は [DEVELOPMENT.md](DEVELOPMENT.md) にまとめてあります。
+設計の詳細・開発の経緯・検証状況は [DEVELOPMENT.md](DEVELOPMENT.md) にまとめてあります。
