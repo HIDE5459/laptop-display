@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>laptop-display — 送信 (Mac)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 1.5rem;
+    background: #111418; color: #e8eaed;
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  }
+  h1 { font-size: 1.3rem; font-weight: 600; margin: 0; }
+  button {
+    font-size: 1.05rem; padding: .8rem 2rem; border: none; border-radius: 10px;
+    background: #3b82f6; color: #fff; cursor: pointer;
+  }
+  button:disabled { background: #374151; cursor: default; }
+  #status { color: #9aa0a6; font-size: .95rem; min-height: 1.4em; text-align: center; padding: 0 1rem; }
+  #preview { max-width: 70vw; max-height: 40vh; border-radius: 8px; background: #000; display: none; }
+  .hint { color: #6b7280; font-size: .85rem; max-width: 34rem; text-align: center; line-height: 1.7; padding: 0 1rem; }
+</style>
+</head>
+<body>
+  <h1>laptop-display — 送信側 (Mac)</h1>
+  <button id="start">画面を選んで配信を開始</button>
+  <div id="status">待機中</div>
+  <video id="preview" autoplay muted playsinline></video>
+  <p class="hint">
+    拡張ディスプレイとして使う場合は、BetterDisplay で作成した仮想ディスプレイを
+    共有対象に選んでください。画面全体を選ぶとミラーリングになります。
+  </p>
+
+<script>
+const statusEl = document.getElementById('status');
+const startBtn = document.getElementById('start');
+const preview = document.getElementById('preview');
+
+let ws, pc, stream;
+
+function setStatus(text) { statusEl.textContent = text; }
+
+function connectSignaling() {
+  ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'hello', role: 'sender' }));
+    setStatus(stream ? '受信側の接続を待っています…' : '配信を開始してください');
+  };
+  ws.onmessage = async (ev) => {
+    const msg = JSON.parse(ev.data);
+    if (msg.type === 'receiver-ready' && stream) await startPeer();
+    else if (msg.type === 'answer' && pc) await pc.setRemoteDescription(msg.description);
+    else if (msg.type === 'ice' && pc) await pc.addIceCandidate(msg.candidate).catch(() => {});
+    else if (msg.type === 'peer-left') setStatus('受信側が切断しました。再接続を待っています…');
+  };
+  // サーバー再起動などで切れたら自動で繋ぎ直す
+  ws.onclose = () => setTimeout(connectSignaling, 1500);
+}
+
+// H.264 を最優先にする (ハードウェア処理で遅延と CPU 負荷が下がる)
+function preferH264() {
+  try {
+    const codecs = RTCRtpSender.getCapabilities('video').codecs;
+    const h264 = codecs.filter((c) => /h264/i.test(c.mimeType));
+    if (!h264.length) return;
+    const rest = codecs.filter((c) => !/h264/i.test(c.mimeType));
+    for (const t of pc.getTransceivers()) {
+      if (t.sender && t.sender.track && t.sender.track.kind === 'video' && t.setCodecPreferences) {
+        t.setCodecPreferences([...h264, ...rest]);
+      }
+    }
+  } catch {}
+}
+
+async function startPeer() {
+  if (pc) pc.close();
+  pc = new RTCPeerConnection();
+  for (const track of stream.getTracks()) pc.addTrack(track, stream);
+  preferH264();
+  pc.onicecandidate = (e) => {
+    if (e.candidate) ws.send(JSON.stringify({ type: 'ice', candidate: e.candidate }));
+  };
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'connected') setStatus('配信中(受信側に接続済み)');
+    else if (pc.connectionState === 'failed') setStatus('接続に失敗しました。受信側ページを再読み込みしてください');
+  };
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  ws.send(JSON.stringify({ type: 'offer', description: pc.localDescription }));
+}
+
+startBtn.onclick = async () => {
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: { ideal: 60, max: 60 } },
+      audio: false,
+    });
+  } catch {
+    return; // ユーザーがキャンセル
+  }
+  // 動きの滑らかさ優先でエンコードさせる(遅延・フレームレートに効く)
+  stream.getVideoTracks()[0].contentHint = 'motion';
+  preview.srcObject = stream;
+  preview.style.display = 'block';
+  startBtn.disabled = true;
+  startBtn.textContent = '配信中';
+  setStatus('受信側の接続を待っています…');
+  stream.getVideoTracks()[0].onended = () => location.reload();
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'sender-ready' }));
+  }
+};
+
+connectSignaling();
+</script>
+</body>
+</html>

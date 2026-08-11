@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>LaptopDisplay — 送信</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="appbar">
+    <div class="logo">LD</div>
+    <h1>LaptopDisplay</h1>
+    <span class="role-tag">送信側 — この画面を配信します</span>
+    <div class="spacer"></div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>ステータス</h2>
+      <div class="status-row">
+        <span class="dot wait" id="statusDot"></span>
+        <span class="status-text" id="statusText">起動中…</span>
+      </div>
+      <div class="status-sub" id="statusSub"></div>
+    </section>
+
+    <section class="card" id="vdCard" style="display:none">
+      <h2>仮想ディスプレイ(拡張モード)</h2>
+      <div class="status-row">
+        <select class="field" id="vdRes">
+          <option value="1920x1080" selected>1920 × 1080 (推奨)</option>
+          <option value="2560x1440">2560 × 1440</option>
+          <option value="1680x1050">1680 × 1050</option>
+        </select>
+        <button class="btn" id="vdBtn">仮想ディスプレイを作成</button>
+        <span class="status-sub" id="vdSub"></span>
+      </div>
+      <p class="hint">
+        作成すると Mac に「2 枚目のモニタ」が追加され、下の一覧に
+        <b>LaptopDisplay</b> という画面が現れます。それを選んで配信すると、
+        ウィンドウをドラッグして移せる拡張ディスプレイになります。
+        ミラーリング(複製)でよければ作成せず今の画面を選んでください。
+      </p>
+    </section>
+
+    <section class="card" id="pickerCard">
+      <h2>配信する画面を選択</h2>
+      <div class="grid" id="sourceGrid"></div>
+      <p class="hint" id="pickerHint">
+        拡張ディスプレイとして使う場合は BetterDisplay の仮想ディスプレイを選択してください。
+        サムネイルが真っ黒な場合は、macOS の「画面収録」権限を LaptopDisplay に許可して再起動してください。
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>画質モード</h2>
+      <div class="status-row">
+        <div class="seg" id="qualitySeg">
+          <button data-q="text" class="active">文字くっきり</button>
+          <button data-q="balanced">バランス</button>
+          <button data-q="motion">動き滑らか</button>
+        </div>
+        <span class="status-sub">配信中でも切り替えられます</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>受信側の接続方法</h2>
+      <div class="status-sub" style="margin-bottom:10px">
+        Windows 側で LaptopDisplay.exe を起動すると自動で接続されます。
+        アプリを使わない場合はブラウザで以下の URL を開いてください。
+      </div>
+      <div class="url-row" id="urlRow"></div>
+    </section>
+
+    <section class="card">
+      <div class="status-row" style="margin-bottom:8px">
+        <button class="btn primary" id="startBtn" disabled>配信を開始</button>
+        <button class="btn danger" id="stopBtn" style="display:none">配信を停止</button>
+        <span class="status-sub" id="castSub">画面を選択すると開始できます</span>
+      </div>
+      <label class="status-sub" style="display:flex;align-items:center;gap:7px;cursor:pointer">
+        <input type="checkbox" id="autoChk">
+        おまかせ起動 — 次回からアプリを起動するだけで、この構成のまま自動で配信を開始する
+      </label>
+    </section>
+  </main>
+
+<script src="sender.js"></script>
+</body>
+</html>

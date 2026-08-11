@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>laptop-display — 受信 (Windows)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #screen { width: 100%; height: 100%; object-fit: contain; display: block; }
+  #overlay {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: .8rem;
+    color: #e8eaed; background: #111418;
+    font-family: "Segoe UI", "Yu Gothic UI", "Noto Sans JP", sans-serif;
+  }
+  #overlay.hidden { display: none; }
+  .spinner {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 3px solid #374151; border-top-color: #3b82f6;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #msg { color: #9aa0a6; font-size: .95rem; }
+  #tip {
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+    color: #fff; background: rgba(0,0,0,.55); padding: .4rem 1rem;
+    border-radius: 999px; font-size: .8rem;
+    font-family: "Segoe UI", sans-serif; pointer-events: none;
+    opacity: 0; transition: opacity .3s;
+  }
+</style>
+</head>
+<body>
+  <video id="screen" autoplay muted playsinline></video>
+  <div id="overlay">
+    <div class="spinner"></div>
+    <div id="msg">Mac 側の配信を待っています…</div>
+  </div>
+  <div id="tip">ダブルクリックで全画面表示</div>
+
+<script>
+const video = document.getElementById('screen');
+const overlay = document.getElementById('overlay');
+const msg = document.getElementById('msg');
+const tip = document.getElementById('tip');
+
+let ws, pc;
+
+function connectSignaling() {
+  ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen = () => ws.send(JSON.stringify({ type: 'hello', role: 'receiver' }));
+  ws.onmessage = async (ev) => {
+    const m = JSON.parse(ev.data);
+    if (m.type === 'offer') {
+      if (pc) pc.close();
+      pc = new RTCPeerConnection();
+      pc.onicecandidate = (e) => {
+        if (e.candidate) ws.send(JSON.stringify({ type: 'ice', candidate: e.candidate }));
+      };
+      pc.ontrack = (e) => {
+        // 受信バッファを最小化して表示遅延を削る (LAN 前提なので溜めない)
+        try {
+          e.receiver.jitterBufferTarget = 0;
+          e.receiver.playoutDelayHint = 0;
+        } catch {}
+        video.srcObject = e.streams[0];
+        overlay.classList.add('hidden');
+        tip.style.opacity = 1;
+        setTimeout(() => (tip.style.opacity = 0), 4000);
+      };
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+          overlay.classList.remove('hidden');
+          msg.textContent = '接続が切れました。再接続を待っています…';
+        }
+      };
+      await pc.setRemoteDescription(m.description);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      ws.send(JSON.stringify({ type: 'answer', description: pc.localDescription }));
+    } else if (m.type === 'ice' && pc) {
+      await pc.addIceCandidate(m.candidate).catch(() => {});
+    } else if (m.type === 'sender-ready') {
+      // 送信側が後から配信を始めた場合、こちらの存在を伝えてオファーを促す
+      ws.send(JSON.stringify({ type: 'receiver-ready' }));
+    } else if (m.type === 'peer-left') {
+      overlay.classList.remove('hidden');
+      msg.textContent = 'Mac 側の配信を待っています…';
+    }
+  };
+  ws.onclose = () => {
+    overlay.classList.remove('hidden');
+    msg.textContent = 'サーバーに再接続しています…';
+    setTimeout(connectSignaling, 1500);
+  };
+}
+
+document.addEventListener('dblclick', () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen();
+});
+
+connectSignaling();
+</script>
+</body>
+</html>

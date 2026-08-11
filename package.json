@@ -1,0 +1,69 @@
+{
+  "name": "laptop-display",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mac の画面を Windows ノートに WebRTC で低遅延ストリーミングしてサブディスプレイ化する",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "serve": "node server.js",
+    "icon": "node tools/make-icon.js",
+    "dist:mac": "electron-builder --mac dmg",
+    "dist:win": "electron-builder --win nsis"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.hide5459.laptop-display",
+    "productName": "LaptopDisplay",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "lib/**",
+      "app/**",
+      "public/**"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.utilities",
+      "extraResources": [
+        {
+          "from": "build/VirtualDisplay",
+          "to": "VirtualDisplay"
+        }
+      ]
+    },
+    "dmg": {
+      "title": "LaptopDisplay"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true
+    }
+  }
+}

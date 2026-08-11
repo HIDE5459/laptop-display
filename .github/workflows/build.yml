@@ -1,0 +1,82 @@
+name: Build (dmg / exe)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            args: --mac dmg
+            artifact: LaptopDisplay-mac-dmg
+            pattern: dist/*.dmg
+          - os: windows-latest
+            args: --win nsis
+            artifact: LaptopDisplay-win-exe
+            pattern: dist/*.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build VirtualDisplay helper (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          clang -O2 -fobjc-arc -framework Foundation -framework CoreGraphics \
+            tools/mac/virtual-display.m -o build/VirtualDisplay
+
+      - name: Build
+        run: npx electron-builder ${{ matrix.args }} --publish never
+        env:
+          # 未署名ビルド (署名証明書の自動検出を無効化)
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.pattern }}
+          if-no-files-found: error
+
+  # ビルド済みの dmg / exe を GitHub Release に添付して、
+  # Releases ページから直接ダウンロードできるようにする
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: LaptopDisplay(最新ビルド)
+          body: |
+            Mac の画面を Windows ノートに低遅延ストリーミングしてサブディスプレイ化するアプリ。
+
+            - **LaptopDisplay-*-arm64.dmg** — Mac (Apple Silicon) 用・送信側
+            - **LaptopDisplay Setup *.exe** — Windows 10/11 (x64) 用・受信側
+
+            未署名ビルドのため初回起動時: Mac は右クリック→「開く」、
+            Windows は SmartScreen で「詳細情報」→「実行」。
+            使い方は README を参照してください。
+          files: dist/**
+          make_latest: true
