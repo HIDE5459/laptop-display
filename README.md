@@ -17,25 +17,42 @@ Windows ノートをサブディスプレイとして使うためのデスクト
 - `LaptopDisplay-1.0.0-arm64.dmg` — Mac (Apple Silicon) 用
 - `LaptopDisplay.Setup.1.0.0.exe` — Windows 10/11 (x64) 用
 
-### 未署名アプリの初回起動
+### Mac: インストールスクリプトを使うのが簡単
 
-Apple Developer 証明書による署名・公証をしていないため、初回のみ警告が出ます。
-(ビルド時に ad-hoc 署名は付けています)
+Apple Developer Program に登録していないため、このアプリは**公証 (notarization) を
+受けていません**。そのため dmg をダウンロードしたまま開くと、macOS が
+「マルウェアが含まれている可能性がある」としてブロックします(実際にマルウェアが
+入っているわけではなく、公証の照会先に情報がないためこの表示になります)。
 
-- **Mac**: アプリを右クリック →「開く」→「開く」
-- **Windows**: SmartScreen の警告で「詳細情報」→「実行」
-
-**「"LaptopDisplay" は壊れているため開けません」と出る場合**
-
-ダウンロード時に付く隔離属性が原因です。アプリが壊れているわけではありません。
-Applications に入れた後、ターミナルで次を実行してください。
+取得・インストール・隔離属性の解除・起動をまとめて行うスクリプトを用意してあります。
 
 ```bash
-xattr -cr /Applications/LaptopDisplay.app
-codesign --force --deep --sign - /Applications/LaptopDisplay.app
+curl -fsSL https://raw.githubusercontent.com/HIDE5459/laptop-display/main/scripts/install-mac.sh | bash
 ```
 
-以降は普通に起動できます(初回のみ右クリック →「開く」が必要な場合があります)。
+更新するときも同じコマンドで最新版に入れ替わります。
+
+### 手動で入れる場合
+
+dmg から Applications にコピーしたあと、ターミナルで隔離属性を外します。
+
+```bash
+xattr -dr com.apple.quarantine /Applications/LaptopDisplay.app
+open /Applications/LaptopDisplay.app
+```
+
+**この操作はダウンロードし直すたびに必要です**(新しく落としたアプリには
+再び隔離属性が付くため)。
+
+macOS の警告文と原因の対応:
+
+| 警告 | 原因 | 対処 |
+|---|---|---|
+| マルウェアが含まれている可能性がある | 公証がない + 隔離属性 | 上記の `xattr -dr` |
+| 壊れているため開けません | 署名がない (arm64) | ビルド時に ad-hoc 署名済み。出る場合は `codesign --force --deep --sign - <app>` |
+| 開発元を確認できません | 公証なし | システム設定 → プライバシーとセキュリティ →「このまま開く」 |
+
+**Windows**: SmartScreen の警告で「詳細情報」→「実行」。
 
 ## 使い方
 
