@@ -17,6 +17,8 @@ const {
   systemPreferences,
   globalShortcut,
   screen,
+  Tray,
+  nativeImage,
 } = require('electron');
 const path = require('path');
 const os = require('os');
@@ -37,6 +39,8 @@ const role = process.argv.includes('--receiver')
       : 'receiver';
 
 let win = null;
+let tray = null;
+let isQuitting = false;
 let peerState = { sender: false, receiver: false };
 
 function createWindow() {
@@ -64,7 +68,50 @@ function createWindow() {
   }
 
   win.loadFile(path.join(__dirname, 'app', `${role}.html`));
+
+  // 受信側は常駐させたいので、ウィンドウを閉じても終了せずトレイに残す
+  win.on('close', (event) => {
+    if (role === 'receiver' && !isQuitting) {
+      event.preventDefault();
+      win.hide();
+    }
+  });
   win.on('closed', () => (win = null));
+}
+
+function showWindow() {
+  if (!win) {
+    createWindow();
+    return;
+  }
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+
+// 受信側 (Windows) を常駐させるためのトレイアイコン
+function createTray() {
+  if (tray || role !== 'receiver') return;
+
+  let image = nativeImage.createFromPath(helperPath('icon.png'));
+  if (!image.isEmpty()) image = image.resize({ width: 16, height: 16 });
+
+  tray = new Tray(image);
+  tray.setToolTip('LaptopDisplay');
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: 'ウィンドウを表示', click: showWindow },
+      { type: 'separator' },
+      {
+        label: '終了',
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        },
+      },
+    ])
+  );
+  tray.on('double-click', showWindow);
 }
 
 function startSenderServices() {
@@ -416,6 +463,24 @@ ipcMain.handle('relaunch', () => {
 
 ipcMain.handle('get-peers', () => peerState);
 
+// OS のログイン時に自動起動する設定
+ipcMain.handle('get-auto-launch', () => {
+  try {
+    return app.getLoginItemSettings().openAtLogin;
+  } catch {
+    return false;
+  }
+});
+
+ipcMain.handle('set-auto-launch', (_e, enabled) => {
+  try {
+    app.setLoginItemSettings({ openAtLogin: !!enabled });
+    return app.getLoginItemSettings().openAtLogin;
+  } catch {
+    return false;
+  }
+});
+
 // ---- 受信側の画面情報 ----
 // Windows が対応している解像度を列挙して、送信側が仮想ディスプレイの
 // 解像度として選べるようにする。ハードウェア固有で変わらないのでキャッシュする。
@@ -568,22 +633,23 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
-    if (win) {
-      if (win.isMinimized()) win.restore();
-      win.focus();
-    }
-  });
+  app.on('second-instance', showWindow);
 
   app.whenReady().then(() => {
     if (process.platform !== 'darwin') Menu.setApplicationMenu(null);
     if (role === 'sender') startSenderServices();
     else startReceiverServices();
     createWindow();
+    createTray();
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
   });
 
-  app.on('window-all-closed', () => app.quit());
+  // 受信側はトレイに常駐させるため、ウィンドウが無くなっても終了しない
+  app.on('window-all-closed', () => {
+    if (role !== 'receiver' || isQuitting) app.quit();
+  });
+
+  app.on('before-quit', () => (isQuitting = true));
 }

@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('native', {
   getSources: () => ipcRenderer.invoke('get-sources'),
   getPeers: () => ipcRenderer.invoke('get-peers'),
   getDisplayInfo: () => ipcRenderer.invoke('get-display-info'),
+  getAutoLaunch: () => ipcRenderer.invoke('get-auto-launch'),
+  setAutoLaunch: (enabled) => ipcRenderer.invoke('set-auto-launch', enabled),
   getScreenPermission: () => ipcRenderer.invoke('get-screen-permission'),
   openScreenSettings: () => ipcRenderer.invoke('open-screen-settings'),
   openDisplaySettings: () => ipcRenderer.invoke('open-display-settings'),

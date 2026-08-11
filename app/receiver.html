@@ -73,6 +73,11 @@
         <input class="field" id="manualIp" placeholder="Mac の IP を入力 (例: 192.168.1.5)" size="26">
         <button class="btn" id="manualBtn">接続</button>
       </div>
+      <label class="status-sub" id="autoLaunchRow"
+             style="display:none;align-items:center;gap:7px;cursor:pointer;margin-top:4px">
+        <input type="checkbox" id="autoLaunchChk">
+        この PC の起動時に自動で起動する(常駐)
+      </label>
       <p class="hint" style="max-width:31rem;text-align:center;line-height:1.8">
         Tailscale・VPN 経由やゲスト Wi-Fi では自動検出(ブロードキャスト)が通らないため、
         Mac の IP を直接入力してください。Tailscale の場合は Mac で

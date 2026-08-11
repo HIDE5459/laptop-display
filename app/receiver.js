@@ -143,6 +143,15 @@ manualIp.addEventListener('keydown', (e) => { if (e.key === 'Enter') manualBtn.o
     try {
       displayInfo = await window.native.getDisplayInfo();
     } catch {}
+
+    // ログイン時の自動起動 (常駐)
+    const row = document.getElementById('autoLaunchRow');
+    const chk = document.getElementById('autoLaunchChk');
+    row.style.display = 'flex';
+    chk.checked = await window.native.getAutoLaunch();
+    chk.onchange = async () => {
+      chk.checked = await window.native.setAutoLaunch(chk.checked);
+    };
     window.native.onSenderDiscovered((found) => {
       if (!wsAlive) connect({ ip: found.ip, port: found.port, hostLabel: found.host });
     });

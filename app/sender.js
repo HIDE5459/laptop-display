@@ -553,6 +553,12 @@ async function tryAutoStart() {
   };
   if (info.ips.length) urlRow.appendChild(copyBtn);
 
+  const loginChk = document.getElementById('loginChk');
+  loginChk.checked = await window.native.getAutoLaunch();
+  loginChk.onchange = async () => {
+    loginChk.checked = await window.native.setAutoLaunch(loginChk.checked);
+  };
+
   window.native.onPeersChanged((peers) => {
     receiverConnected = peers.receiver;
     updateAutoResOption(peers.receiverScreen);

@@ -60,6 +60,10 @@
         {
           "from": "build/ModifierTap",
           "to": "ModifierTap"
+        },
+        {
+          "from": "build/icon.png",
+          "to": "icon.png"
         }
       ]
     },
@@ -73,6 +77,12 @@
           "arch": [
             "x64"
           ]
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "build/icon.png",
+          "to": "icon.png"
         }
       ]
     },
