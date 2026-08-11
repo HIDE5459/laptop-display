@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('native', {
   checkAccessibility: (prompt) => ipcRenderer.invoke('check-accessibility', prompt),
   openAccessibilitySettings: () => ipcRenderer.invoke('open-accessibility-settings'),
   onTapStatus: (cb) => ipcRenderer.on('tap-status', (_e, status) => cb(status)),
+  onInputControl: (cb) => ipcRenderer.on('input-control', (_e, state) => cb(state)),
   setInputControl: (config) => ipcRenderer.invoke('set-input-control', config),
   resolveDisplayBounds: (displayId) => ipcRenderer.invoke('resolve-display-bounds', displayId),
   relaunch: () => ipcRenderer.invoke('relaunch'),

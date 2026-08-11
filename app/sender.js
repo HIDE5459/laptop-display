@@ -425,15 +425,26 @@ inputSwap.onchange = () => {
 inputPermBtn.onclick = () => window.native.openAccessibilitySettings();
 
 async function initInputControl() {
+  // 入力受付はカーソルを奪う可能性があるため、起動時は必ずオフから始める。
+  // (前回オンのまま復元すると、Mac 側を操作できない状態で起動しかねない)
+  inputEnabled.checked = false;
   try {
     const saved = JSON.parse(localStorage.getItem(INPUT_KEY));
-    if (saved) {
-      inputEnabled.checked = !!saved.enabled;
-      if (typeof saved.swapCtrlCommand === 'boolean') inputSwap.checked = saved.swapCtrlCommand;
+    if (saved && typeof saved.swapCtrlCommand === 'boolean') {
+      inputSwap.checked = saved.swapCtrlCommand;
     }
   } catch {}
   await applyInputControl();
 }
+
+// 脱出用ホットキー (Control+Alt+I) で強制解除されたときに UI を合わせる
+window.native.onInputControl((state) => {
+  inputEnabled.checked = !!state.enabled;
+  if (state.forced) {
+    inputSub.textContent =
+      'Control+Alt+I で強制的に解除しました。Windows 側からの操作は受け付けません。';
+  }
+});
 
 // ---- Option キーのタップで切り替え ----
 

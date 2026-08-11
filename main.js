@@ -334,8 +334,6 @@ function registerCursorHotkeys(config) {
   }
   cursorHotkeys = [];
 
-  if (!config || !config.enabled) return { ok: true, registered: [], failed: [] };
-
   const failed = [];
   const tryRegister = (accelerator, handler) => {
     if (!accelerator) return;
@@ -346,6 +344,21 @@ function registerCursorHotkeys(config) {
       failed.push(accelerator);
     }
   };
+
+  // 入力転送でカーソルを奪われるとマウスで解除できなくなるため、
+  // 脱出用のキーはカーソル移動の設定に関わらず必ず登録する。
+  tryRegister('Control+Alt+I', () => {
+    inputConfig.enabled = false;
+    stopInputInject();
+    if (win) {
+      win.webContents.send('input-control', { enabled: false, forced: true });
+      showWindow();
+    }
+  });
+
+  if (!config || !config.enabled) {
+    return { ok: true, registered: cursorHotkeys, failed };
+  }
 
   tryRegister(config.cycle, () => cursorToDisplay('next'));
   (config.direct || []).forEach((accelerator, i) => {
