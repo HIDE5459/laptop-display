@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('native', {
   setAutoLaunch: (enabled) => ipcRenderer.invoke('set-auto-launch', enabled),
   getScreenPermission: () => ipcRenderer.invoke('get-screen-permission'),
   openScreenSettings: () => ipcRenderer.invoke('open-screen-settings'),
+  resetScreenPermission: () => ipcRenderer.invoke('reset-screen-permission'),
   openDisplaySettings: () => ipcRenderer.invoke('open-display-settings'),
   setCursorHotkeys: (config) => ipcRenderer.invoke('set-cursor-hotkeys', config),
   cursorToNextDisplay: () => ipcRenderer.invoke('cursor-to-next-display'),

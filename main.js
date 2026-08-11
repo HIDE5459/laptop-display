@@ -201,6 +201,22 @@ ipcMain.handle('open-screen-settings', () => {
   );
 });
 
+// アプリを更新すると署名が変わり、画面収録の許可が無効なまま残る。
+// 古い紐付けを消して再起動すると、次の起動で許可し直せる。
+ipcMain.handle('reset-screen-permission', () => {
+  if (process.platform !== 'darwin') return { ok: false, error: 'macOS でのみ使えます' };
+  try {
+    execFileSync('tccutil', ['reset', 'ScreenCapture', 'com.hide5459.laptop-display'], {
+      timeout: 5000,
+    });
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+  app.relaunch();
+  app.exit(0);
+  return { ok: true };
+});
+
 // ---- カーソルを各ディスプレイの中央へ飛ばす ----
 // 画面が 3 枚になるとカーソルを見失いやすいので、ホットキーで移動できるようにする。
 // 移動先では一瞬リングを描いて位置を分かりやすくする。

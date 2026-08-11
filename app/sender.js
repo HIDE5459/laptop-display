@@ -14,6 +14,7 @@ const permWarn = document.getElementById('permWarn');
 const permWarnText = document.getElementById('permWarnText');
 const permOpenBtn = document.getElementById('permOpenBtn');
 const permRelaunchBtn = document.getElementById('permRelaunchBtn');
+const permResetBtn = document.getElementById('permResetBtn');
 
 // おまかせ起動: 前回配信時の構成を保存し、次回起動時に自動で再現する
 const PREF_KEY = 'laptopdisplay.autocast';
@@ -77,6 +78,18 @@ async function checkScreenPermission(sources) {
 
 permOpenBtn.onclick = () => window.native.openScreenSettings();
 permRelaunchBtn.onclick = () => window.native.relaunch();
+
+// 更新後に失効した許可を消してから再起動する。再起動後の初回起動で
+// 権限のダイアログが出るので、そこで許可すれば復帰できる。
+permResetBtn.onclick = async () => {
+  permResetBtn.disabled = true;
+  permWarnText.textContent = '権限をリセットして再起動します…';
+  const res = await window.native.resetScreenPermission();
+  if (!res.ok) {
+    permResetBtn.disabled = false;
+    permWarnText.textContent = `リセットできませんでした: ${res.error}`;
+  }
+};
 
 async function refreshSources() {
   const sources = await window.native.getSources();

@@ -129,14 +129,17 @@
         <div style="font-size:13.5px; margin-bottom:4px">画面収録の権限がありません</div>
         <div class="status-sub" id="permWarnText" style="margin-bottom:10px"></div>
         <div class="status-row">
+          <button class="btn primary" id="permResetBtn">権限をリセットして再起動</button>
           <button class="btn" id="permOpenBtn">設定を開く</button>
           <button class="btn" id="permRelaunchBtn">許可したので再起動</button>
         </div>
       </div>
       <div class="grid" id="sourceGrid"></div>
       <p class="hint" id="pickerHint">
-        拡張ディスプレイとして使う場合は BetterDisplay の仮想ディスプレイを選択してください。
-        サムネイルが真っ黒な場合は、macOS の「画面収録」権限を LaptopDisplay に許可して再起動してください。
+        拡張ディスプレイとして使う場合は、上で作成した <b>LaptopDisplay</b> を選択してください。
+        一覧が空、またはサムネイルが真っ黒な場合は画面収録の権限が失効しています
+        (アプリを更新すると署名が変わるため毎回失効します)。上の
+        <b>「権限をリセットして再起動」</b>で復帰できます。
       </p>
     </section>
 
