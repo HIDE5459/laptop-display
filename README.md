@@ -19,11 +19,23 @@ Windows ノートをサブディスプレイとして使うためのデスクト
 
 ### 未署名アプリの初回起動
 
-コード署名をしていないため、初回のみ警告が出ます。
+Apple Developer 証明書による署名・公証をしていないため、初回のみ警告が出ます。
+(ビルド時に ad-hoc 署名は付けています)
 
 - **Mac**: アプリを右クリック →「開く」→「開く」
-  (それでも開けない場合: `xattr -cr /Applications/LaptopDisplay.app`)
 - **Windows**: SmartScreen の警告で「詳細情報」→「実行」
+
+**「"LaptopDisplay" は壊れているため開けません」と出る場合**
+
+ダウンロード時に付く隔離属性が原因です。アプリが壊れているわけではありません。
+Applications に入れた後、ターミナルで次を実行してください。
+
+```bash
+xattr -cr /Applications/LaptopDisplay.app
+codesign --force --deep --sign - /Applications/LaptopDisplay.app
+```
+
+以降は普通に起動できます(初回のみ右クリック →「開く」が必要な場合があります)。
 
 ## 使い方
 
