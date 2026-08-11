@@ -6,9 +6,14 @@
 <link rel="stylesheet" href="style.css">
 <style>
   html, body { height: 100%; overflow: hidden; }
-  body { display: flex; flex-direction: column; }
-  #stage { position: relative; flex: 1; background: #000; min-height: 0; }
-  #screen { width: 100%; height: 100%; object-fit: contain; display: block; }
+  body { margin: 0; }
+  /* flex ではなくビューポート全体に固定する。レイアウトのはみ出しで
+     映像の上下が欠けることがないようにするため。 */
+  #stage { position: fixed; inset: 0; background: #000; }
+  #screen { width: 100%; height: 100%; display: block; object-fit: contain; }
+  /* 表示の合わせ方を切り替える (Z キー / ツールバー) */
+  #screen.fit-cover { object-fit: cover; }   /* 画面いっぱい (端が切れる) */
+  #screen.fit-fill { object-fit: fill; }     /* 引き伸ばす (比率が変わる) */
 
   #overlay {
     position: absolute; inset: 0; display: flex; flex-direction: column;
@@ -80,11 +85,13 @@
       <span id="srcName"></span>
       <div class="sep"></div>
       <button id="fsBtn">全画面 (F)</button>
+      <button id="fitBtn">表示: 合わせる (Z)</button>
       <button id="statsBtn">統計 (S)</button>
     </div>
 
     <div id="stats">
-      解像度 <b id="stRes">—</b><br>
+      映像の解像度 <b id="stRes">—</b><br>
+      この画面の表示領域 <b id="stView">—</b><br>
       フレームレート <b id="stFps">—</b><br>
       ビットレート <b id="stBr">—</b><br>
       遅延 (RTT) <b id="stRtt">—</b>

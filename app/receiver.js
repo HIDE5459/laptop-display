@@ -9,6 +9,7 @@ const manualIp = document.getElementById('manualIp');
 const manualBtn = document.getElementById('manualBtn');
 const srcName = document.getElementById('srcName');
 const fsBtn = document.getElementById('fsBtn');
+const fitBtn = document.getElementById('fitBtn');
 const statsBtn = document.getElementById('statsBtn');
 const statsBox = document.getElementById('stats');
 
@@ -136,6 +137,46 @@ if (remembered) {
   showOverlay('Mac 側 (LaptopDisplay) を探しています…');
 }
 
+// ---- 表示の合わせ方 ----
+// Mac 側と Windows 側で画面の縦横比が違うと、そのままでは上下(または左右)に
+// 黒帯が出る。用途に応じて切り替えられるようにする。
+const FIT_KEY = 'laptopdisplay.fit';
+const FIT_MODES = [
+  { key: 'contain', label: '合わせる', cls: '' },
+  { key: 'cover', label: '画面いっぱい', cls: 'fit-cover' },
+  { key: 'fill', label: '引き伸ばす', cls: 'fit-fill' },
+];
+let fitIndex = 0;
+
+function applyFit() {
+  const mode = FIT_MODES[fitIndex];
+  video.classList.remove('fit-cover', 'fit-fill');
+  if (mode.cls) video.classList.add(mode.cls);
+  fitBtn.textContent = `表示: ${mode.label} (Z)`;
+  try {
+    localStorage.setItem(FIT_KEY, mode.key);
+  } catch {}
+}
+
+function cycleFit() {
+  fitIndex = (fitIndex + 1) % FIT_MODES.length;
+  applyFit();
+}
+
+const savedFit = (() => {
+  try {
+    return localStorage.getItem(FIT_KEY);
+  } catch {
+    return null;
+  }
+})();
+if (savedFit) {
+  const i = FIT_MODES.findIndex((m) => m.key === savedFit);
+  if (i >= 0) fitIndex = i;
+}
+applyFit();
+fitBtn.onclick = cycleFit;
+
 // ---- ツールバーの自動非表示 ----
 // マウスを動かしたときだけ出し、一定時間動かなければツールバーとカーソルを隠す。
 // 全画面表示中に画面の端へマウスが乗っただけで出続けるのを防ぐ。
@@ -173,6 +214,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'f' || e.key === 'F') setFullscreen();
   if (e.key === 'Escape') setFullscreen(false);
   if (e.key === 's' || e.key === 'S') statsBox.classList.toggle('show');
+  if (e.key === 'z' || e.key === 'Z') cycleFit();
 });
 statsBtn.onclick = () => statsBox.classList.toggle('show');
 
@@ -182,6 +224,8 @@ function startStats() {
   lastTs = 0;
   statsTimer = setInterval(async () => {
     if (!pc) return;
+    document.getElementById('stView').textContent =
+      `${window.innerWidth}×${window.innerHeight}`;
     const report = await pc.getStats();
     for (const stat of report.values()) {
       if (stat.type === 'inbound-rtp' && stat.kind === 'video') {
