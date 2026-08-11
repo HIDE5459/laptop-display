@@ -10,6 +10,7 @@ const manualBtn = document.getElementById('manualBtn');
 const srcName = document.getElementById('srcName');
 const fsBtn = document.getElementById('fsBtn');
 const fitBtn = document.getElementById('fitBtn');
+const inputBtn = document.getElementById('inputBtn');
 const statsBtn = document.getElementById('statsBtn');
 const statsBox = document.getElementById('stats');
 
@@ -261,10 +262,15 @@ function normalizedPoint(event) {
 function setInputSending(on) {
   inputSending = on;
   stage.style.cursor = on ? 'none' : '';
+  inputBtn.textContent = `操作: ${on ? 'オン' : 'オフ'} (F9)`;
   showToast(on
-    ? 'Mac を操作するモード:オン(F9 で解除)'
-    : 'Mac を操作するモード:オフ');
+    ? 'ホストを操作するモード:オン(F9 かこのボタンで解除)'
+    : 'ホストを操作するモード:オフ');
 }
+
+// 受信側が Mac の場合 F9 が macOS に取られることがあるため、
+// ボタンからも切り替えられるようにする
+inputBtn.onclick = () => setInputSending(!inputSending);
 
 function showToast(text) {
   const previous = srcName.textContent;
