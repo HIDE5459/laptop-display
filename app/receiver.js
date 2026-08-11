@@ -207,6 +207,126 @@ if (savedFit) {
 applyFit();
 fitBtn.onclick = cycleFit;
 
+// ---- Mac を操作する (キーボード・マウスの転送) ----
+// この PC で打ったキーやマウス操作を Mac 側に送る。F9 でオン/オフ。
+// Mac 側でも「操作を受け付ける」をオンにしておく必要がある。
+
+let inputSending = false;
+let lastMoveSentAt = 0;
+
+function sendInput(payload) {
+  if (!inputSending || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ type: 'input', ...payload }));
+}
+
+// 映像は object-fit で余白が付くため、映像内の相対位置を求める
+function normalizedPoint(event) {
+  const rect = video.getBoundingClientRect();
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  if (!vw || !vh || !rect.width || !rect.height) return null;
+
+  const mode = FIT_MODES[fitIndex].key;
+  let drawW = rect.width;
+  let drawH = rect.height;
+  if (mode === 'contain') {
+    const scale = Math.min(rect.width / vw, rect.height / vh);
+    drawW = vw * scale;
+    drawH = vh * scale;
+  } else if (mode === 'cover') {
+    const scale = Math.max(rect.width / vw, rect.height / vh);
+    drawW = vw * scale;
+    drawH = vh * scale;
+  }
+  const offsetX = (rect.width - drawW) / 2;
+  const offsetY = (rect.height - drawH) / 2;
+
+  const x = (event.clientX - rect.left - offsetX) / drawW;
+  const y = (event.clientY - rect.top - offsetY) / drawH;
+  if (x < 0 || x > 1 || y < 0 || y > 1) return null;
+  return { x, y };
+}
+
+function setInputSending(on) {
+  inputSending = on;
+  stage.style.cursor = on ? 'none' : '';
+  showToast(on
+    ? 'Mac を操作するモード:オン(F9 で解除)'
+    : 'Mac を操作するモード:オフ');
+}
+
+function showToast(text) {
+  const previous = srcName.textContent;
+  srcName.textContent = text;
+  toolbar.classList.add('show');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    toolbar.classList.remove('show');
+    srcName.textContent = previous;
+  }, 2500);
+}
+
+document.addEventListener('mousemove', (e) => {
+  if (!inputSending) return;
+  const now = performance.now();
+  if (now - lastMoveSentAt < 8) return; // 最大 125Hz に間引く
+  lastMoveSentAt = now;
+  const p = normalizedPoint(e);
+  if (p) sendInput({ kind: 'move', x: p.x, y: p.y });
+});
+
+document.addEventListener('mousedown', (e) => {
+  if (!inputSending) return;
+  const p = normalizedPoint(e);
+  if (!p) return;
+  e.preventDefault();
+  sendInput({ kind: 'button', button: e.button, down: true, x: p.x, y: p.y });
+});
+
+document.addEventListener('mouseup', (e) => {
+  if (!inputSending) return;
+  const p = normalizedPoint(e);
+  if (!p) return;
+  e.preventDefault();
+  sendInput({ kind: 'button', button: e.button, down: false, x: p.x, y: p.y });
+});
+
+document.addEventListener('contextmenu', (e) => {
+  if (inputSending) e.preventDefault();
+});
+
+document.addEventListener(
+  'wheel',
+  (e) => {
+    if (!inputSending) return;
+    e.preventDefault();
+    sendInput({
+      kind: 'wheel',
+      dy: -Math.sign(e.deltaY) * Math.min(10, Math.ceil(Math.abs(e.deltaY) / 40)),
+      dx: -Math.sign(e.deltaX) * Math.min(10, Math.ceil(Math.abs(e.deltaX) / 40)),
+    });
+  },
+  { passive: false }
+);
+
+function forwardKey(e, down) {
+  // F9 は転送せず、モードの切り替えに使う
+  if (e.code === 'F9') {
+    if (down) setInputSending(!inputSending);
+    e.preventDefault();
+    return true;
+  }
+  if (!inputSending) return false;
+  e.preventDefault();
+  sendInput({
+    kind: 'key',
+    code: e.code,
+    down,
+    mods: { shift: e.shiftKey, ctrl: e.ctrlKey, alt: e.altKey, meta: e.metaKey },
+  });
+  return true;
+}
+
 // ---- ツールバーの自動非表示 ----
 // マウスを動かしたときだけ出し、一定時間動かなければツールバーとカーソルを隠す。
 // 全画面表示中に画面の端へマウスが乗っただけで出続けるのを防ぐ。
@@ -215,6 +335,8 @@ const IDLE_MS = 2000;
 let idleTimer = null;
 
 function revealChrome() {
+  // Mac を操作している間はマウスを動かすたびに出ると邪魔なので出さない
+  if (inputSending) return;
   toolbar.classList.add('show');
   stage.classList.remove('idle');
   clearTimeout(idleTimer);
@@ -241,10 +363,17 @@ document.addEventListener('dblclick', () => setFullscreen());
 document.addEventListener('keydown', (e) => {
   // IP 入力中のキー入力はショートカットとして扱わない
   if (e.target instanceof HTMLInputElement) return;
+  // 転送モード中は F9 以外すべて Mac 側へ送る
+  if (forwardKey(e, true)) return;
   if (e.key === 'f' || e.key === 'F') setFullscreen();
   if (e.key === 'Escape') setFullscreen(false);
   if (e.key === 's' || e.key === 'S') statsBox.classList.toggle('show');
   if (e.key === 'z' || e.key === 'Z') cycleFit();
+});
+
+document.addEventListener('keyup', (e) => {
+  if (e.target instanceof HTMLInputElement) return;
+  forwardKey(e, false);
 });
 statsBtn.onclick = () => statsBox.classList.toggle('show');
 

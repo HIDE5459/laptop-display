@@ -43,6 +43,8 @@ jobs:
             tools/mac/cursor-move.m -o build/CursorMove
           clang -O2 -framework ApplicationServices \
             tools/mac/modifier-tap.m -o build/ModifierTap
+          clang -O2 -framework ApplicationServices \
+            tools/mac/input-inject.m -o build/InputInject
 
       # Developer ID の証明書と Apple ID をシークレットに登録してあれば
       # 署名 + 公証まで行う。無ければ未署名でビルドする(警告は出るが動く)。

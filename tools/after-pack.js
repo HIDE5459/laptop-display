@@ -32,7 +32,7 @@ exports.default = async function afterPack(context) {
   );
 
   // 内側の実行ファイルから先に署名する(入れ子のコードは外側より先に署名が必要)
-  for (const name of ['VirtualDisplay', 'CursorMove', 'ModifierTap']) {
+  for (const name of ['VirtualDisplay', 'CursorMove', 'ModifierTap', 'InputInject']) {
     const helper = path.join(appPath, 'Contents', 'Resources', name);
     if (fs.existsSync(helper)) {
       fs.chmodSync(helper, 0o755);

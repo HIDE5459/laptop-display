@@ -31,6 +31,7 @@ let pc = null;
 let stream = null;
 let selectedId = null;
 let selectedName = null;
+let selectedDisplayId = null;
 let quality = 'text';
 let streaming = false;
 let receiverConnected = false;
@@ -98,7 +99,10 @@ async function refreshSources() {
     tile.onclick = () => {
       selectedId = s.id;
       selectedName = s.name;
+      selectedDisplayId = s.displayId || null;
       startBtn.disabled = false;
+      // 配信対象が変わると座標の対応付けも変わるので入力設定を作り直す
+      if (inputEnabled.checked) applyInputControl();
       castSub.textContent = streaming ? '選択を変えるには一度停止してください' : '「配信を開始」を押してください';
       refreshSources();
     };
@@ -367,6 +371,70 @@ curCycleKey.addEventListener('keydown', (e) => {
 });
 curTestBtn.onclick = () => window.native.cursorToNextDisplay();
 
+// ---- Windows 側からの操作を受け付ける ----
+
+const INPUT_KEY = 'laptopdisplay.inputcontrol';
+const inputCard = document.getElementById('inputCard');
+const inputEnabled = document.getElementById('inputEnabled');
+const inputSwap = document.getElementById('inputSwap');
+const inputPermBtn = document.getElementById('inputPermBtn');
+const inputSub = document.getElementById('inputSub');
+
+async function applyInputControl() {
+  // 配信対象が画面でない場合は座標を対応付けられない
+  let displayBounds = null;
+  if (selectedDisplayId) {
+    displayBounds = await window.native.resolveDisplayBounds(selectedDisplayId);
+  }
+
+  const config = {
+    enabled: inputEnabled.checked,
+    swapCtrlCommand: inputSwap.checked,
+    displayBounds,
+  };
+  try {
+    localStorage.setItem(
+      INPUT_KEY,
+      JSON.stringify({ enabled: config.enabled, swapCtrlCommand: config.swapCtrlCommand })
+    );
+  } catch {}
+
+  const res = await window.native.setInputControl(config);
+  inputEnabled.checked = res.enabled;
+  inputPermBtn.style.display = res.error === 'permission' ? '' : 'none';
+
+  if (res.error === 'permission') {
+    inputSub.textContent =
+      'アクセシビリティの許可がありません。許可したあとアプリを再起動して、もう一度オンにしてください。';
+  } else if (!res.enabled) {
+    inputSub.textContent = 'Windows 側からの操作は受け付けません';
+  } else if (!displayBounds) {
+    inputSub.textContent =
+      '受け付け中ですが、配信対象が画面ではないため座標を対応付けられません。画面(仮想ディスプレイなど)を選んでください。';
+  } else {
+    inputSub.textContent =
+      `受け付け中(${displayBounds.width}×${displayBounds.height} の範囲に対応付け)。` +
+      'Windows 側の画面上でタイプ・クリックできます。';
+  }
+}
+
+inputEnabled.onchange = applyInputControl;
+inputSwap.onchange = () => {
+  if (inputEnabled.checked) applyInputControl();
+};
+inputPermBtn.onclick = () => window.native.openAccessibilitySettings();
+
+async function initInputControl() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(INPUT_KEY));
+    if (saved) {
+      inputEnabled.checked = !!saved.enabled;
+      if (typeof saved.swapCtrlCommand === 'boolean') inputSwap.checked = saved.swapCtrlCommand;
+    }
+  } catch {}
+  await applyInputControl();
+}
+
 // ---- Option キーのタップで切り替え ----
 
 const TAP_KEY = 'laptopdisplay.modifiertap';
@@ -513,6 +581,7 @@ async function tryAutoStart() {
     if (found) {
       selectedId = found.id;
       selectedName = found.name;
+      selectedDisplayId = found.displayId || null;
       startBtn.disabled = false;
       await refreshSources();
       await startCast();
@@ -533,6 +602,8 @@ async function tryAutoStart() {
     cursorCard.style.display = '';
     await initCursorHotkeys();
     await initModifierTap();
+    inputCard.style.display = '';
+    await initInputControl();
     window.native.onVirtualDisplayChanged((active) => {
       if (!active && vdActive) setVdUi(false, '仮想ディスプレイが終了しました');
     });

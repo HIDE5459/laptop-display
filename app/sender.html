@@ -99,6 +99,29 @@
       </p>
     </section>
 
+    <section class="card" id="inputCard" style="display:none">
+      <h2>Windows 側から Mac を操作する</h2>
+      <div class="status-row">
+        <label class="status-sub" style="display:flex;align-items:center;gap:7px;cursor:pointer">
+          <input type="checkbox" id="inputEnabled">
+          キーボードとマウスの操作を受け付ける
+        </label>
+        <label class="status-sub" style="display:flex;align-items:center;gap:7px;cursor:pointer">
+          <input type="checkbox" id="inputSwap" checked>
+          Ctrl を Command として扱う
+        </label>
+        <button class="btn" id="inputPermBtn" style="display:none">アクセシビリティを許可</button>
+      </div>
+      <div class="status-sub" id="inputSub" style="margin-top:8px"></div>
+      <p class="hint">
+        Windows 側の画面上でタイプ・クリックすると、その操作が Mac に送られます
+        (配信対象が「画面」の場合のみ。ウィンドウ単体の配信では座標が合わないため無効です)。<br>
+        <b>アクセシビリティの許可</b>が必要です。Windows 側では
+        <b>F9</b> で送信のオン/オフを切り替えられます。
+        Alt+Tab など Windows 自身が処理するキーは送れません。
+      </p>
+    </section>
+
     <section class="card" id="pickerCard">
       <h2>配信する画面を選択</h2>
       <div id="permWarn" style="display:none; background:var(--panel-2); border:1px solid var(--border);

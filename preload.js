@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('native', {
   checkAccessibility: (prompt) => ipcRenderer.invoke('check-accessibility', prompt),
   openAccessibilitySettings: () => ipcRenderer.invoke('open-accessibility-settings'),
   onTapStatus: (cb) => ipcRenderer.on('tap-status', (_e, status) => cb(status)),
+  setInputControl: (config) => ipcRenderer.invoke('set-input-control', config),
+  resolveDisplayBounds: (displayId) => ipcRenderer.invoke('resolve-display-bounds', displayId),
   relaunch: () => ipcRenderer.invoke('relaunch'),
   copyText: (text) => ipcRenderer.invoke('copy-text', text),
   toggleFullscreen: (desired) => ipcRenderer.invoke('toggle-fullscreen', desired),

@@ -25,6 +25,7 @@ const os = require('os');
 const dgram = require('dgram');
 const { spawn, execFileSync } = require('child_process');
 const { startSignaling, lanAddresses } = require('./lib/signaling');
+const { keycodeFor, flagsFrom, remapModifiers } = require('./lib/keymap');
 
 const SIGNAL_PORT = 3100;
 const DISCOVERY_PORT = 3101;
@@ -122,6 +123,7 @@ function startSenderServices() {
       peerState = peers;
       if (win) win.webContents.send('peers-changed', peers);
     },
+    onInput: handleRemoteInput,
   });
 
   // 受信側アプリが送信側を自動発見できるよう、LAN にビーコンをブロードキャストする
@@ -176,6 +178,7 @@ ipcMain.handle('get-sources', async () => {
     id: s.id,
     name: s.name,
     kind: s.id.startsWith('screen') ? 'screen' : 'window',
+    displayId: s.display_id || null,
     thumb: s.thumbnail.isEmpty() ? null : s.thumbnail.toDataURL(),
   }));
 });
@@ -351,6 +354,112 @@ function registerCursorHotkeys(config) {
 
   return { ok: failed.length === 0, registered: cursorHotkeys, failed };
 }
+
+// ---- 受信側 (Windows) のキーボード・マウスで Mac を操作する ----
+// 受信側から送られてきた入力を CGEvent として再現する。
+// 他アプリへイベントを送るためアクセシビリティの許可が必要。
+
+let injectProc = null;
+let inputConfig = { enabled: false, swapCtrlCommand: true, displayBounds: null };
+
+function stopInputInject() {
+  if (injectProc) {
+    try {
+      injectProc.stdin.write('q\n');
+    } catch {}
+    injectProc.kill();
+    injectProc = null;
+  }
+}
+
+function startInputInject() {
+  if (injectProc || process.platform !== 'darwin') return;
+  const child = spawn(helperPath('InputInject'), { stdio: ['pipe', 'ignore', 'pipe'] });
+  child.on('error', (err) => {
+    console.error('入力の再現を開始できませんでした:', err.message);
+    injectProc = null;
+  });
+  child.on('exit', () => {
+    if (injectProc === child) injectProc = null;
+  });
+  injectProc = child;
+}
+
+function sendInject(line) {
+  if (!injectProc) return;
+  try {
+    injectProc.stdin.write(line + '\n');
+  } catch {}
+}
+
+// 配信中の画面 (仮想ディスプレイ) の範囲。正規化座標をここに写す。
+function inputTargetBounds() {
+  if (inputConfig.displayBounds) return inputConfig.displayBounds;
+  return screen.getPrimaryDisplay().bounds;
+}
+
+function toGlobalPoint(nx, ny) {
+  const b = inputTargetBounds();
+  const clamp = (v) => Math.max(0, Math.min(1, v));
+  return {
+    x: b.x + clamp(nx) * b.width,
+    y: b.y + clamp(ny) * b.height,
+  };
+}
+
+function handleRemoteInput(msg) {
+  if (!inputConfig.enabled || !injectProc) return;
+
+  if (msg.kind === 'move') {
+    const p = toGlobalPoint(msg.x, msg.y);
+    sendInject(`m ${p.x.toFixed(1)} ${p.y.toFixed(1)}`);
+  } else if (msg.kind === 'button') {
+    const p = toGlobalPoint(msg.x, msg.y);
+    sendInject(`${msg.down ? 'd' : 'u'} ${msg.button | 0} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`);
+  } else if (msg.kind === 'wheel') {
+    sendInject(`s ${Math.round(msg.dy || 0)} ${Math.round(msg.dx || 0)}`);
+  } else if (msg.kind === 'key') {
+    const mods = remapModifiers(msg.mods || {}, inputConfig.swapCtrlCommand);
+    const keycode = keycodeFor(msg.code, inputConfig.swapCtrlCommand);
+    if (keycode === null) return;
+    sendInject(`k ${keycode} ${msg.down ? 1 : 0} ${flagsFrom(mods)}`);
+  }
+}
+
+ipcMain.handle('set-input-control', (_e, config) => {
+  const enabled = !!(config && config.enabled);
+
+  if (enabled && process.platform === 'darwin') {
+    if (!systemPreferences.isTrustedAccessibilityClient(true)) {
+      inputConfig.enabled = false;
+      stopInputInject();
+      return { enabled: false, error: 'permission' };
+    }
+  }
+
+  inputConfig = {
+    enabled,
+    swapCtrlCommand: config && config.swapCtrlCommand !== false,
+    displayBounds: (config && config.displayBounds) || null,
+  };
+
+  if (enabled) startInputInject();
+  else stopInputInject();
+
+  // 受信側に「入力を送ってよいか」を伝える
+  const receiver = peerState.receiver;
+  if (win) win.webContents.send('input-control', { enabled, receiver });
+  return { enabled, error: null };
+});
+
+// 配信対象の画面から座標変換用の範囲を求める
+ipcMain.handle('resolve-display-bounds', (_e, displayId) => {
+  if (!displayId) return null;
+  const display = screen.getAllDisplays().find((d) => String(d.id) === String(displayId));
+  return display ? display.bounds : null;
+});
+
+app.on('will-quit', stopInputInject);
 
 // ---- Option キーのタップでディスプレイを切り替える ----
 // 1 回タップ = メイン (本体)、2 回 = 2 枚目、3 回 = 3 枚目。
