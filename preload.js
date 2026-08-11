@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('native', {
   getDisplayInfo: () => ipcRenderer.invoke('get-display-info'),
   getScreenPermission: () => ipcRenderer.invoke('get-screen-permission'),
   openScreenSettings: () => ipcRenderer.invoke('open-screen-settings'),
+  openDisplaySettings: () => ipcRenderer.invoke('open-display-settings'),
   relaunch: () => ipcRenderer.invoke('relaunch'),
   copyText: (text) => ipcRenderer.invoke('copy-text', text),
   toggleFullscreen: (desired) => ipcRenderer.invoke('toggle-fullscreen', desired),

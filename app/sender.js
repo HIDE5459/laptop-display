@@ -238,7 +238,10 @@ const vdCard = document.getElementById('vdCard');
 const vdBtn = document.getElementById('vdBtn');
 const vdRes = document.getElementById('vdRes');
 const vdSub = document.getElementById('vdSub');
+const vdArrangeBtn = document.getElementById('vdArrangeBtn');
 let vdActive = false;
+
+vdArrangeBtn.onclick = () => window.native.openDisplaySettings();
 
 function setVdUi(active, note = '') {
   vdActive = active;

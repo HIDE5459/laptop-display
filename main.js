@@ -149,6 +149,12 @@ ipcMain.handle('open-screen-settings', () => {
   );
 });
 
+// 仮想ディスプレイの配置 (左右上下) は macOS のディスプレイ設定で変更する
+ipcMain.handle('open-display-settings', () => {
+  if (process.platform !== 'darwin') return;
+  return shell.openExternal('x-apple.systempreferences:com.apple.preference.displays');
+});
+
 ipcMain.handle('relaunch', () => {
   app.relaunch();
   app.exit(0);
