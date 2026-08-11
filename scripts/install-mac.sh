@@ -12,11 +12,25 @@
 
 set -euo pipefail
 
-URL="https://github.com/HIDE5459/laptop-display/releases/download/latest/LaptopDisplay-1.0.0-arm64.dmg"
+# CPU に合わせて Apple Silicon 版 / Intel 版を選ぶ
+if [ "$(uname -m)" = "x86_64" ]; then
+  DMG_NAME="LaptopDisplay-1.0.0-x64.dmg"
+else
+  DMG_NAME="LaptopDisplay-1.0.0-arm64.dmg"
+fi
+URL="https://github.com/HIDE5459/laptop-display/releases/download/latest/$DMG_NAME"
 DMG="$(mktemp -d)/LaptopDisplay.dmg"
 APP="/Applications/LaptopDisplay.app"
 
-echo "==> 最新の dmg をダウンロード中"
+# Electron 33 は macOS 11 (Big Sur) 以降が必要
+MACOS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
+if [ "$MACOS_MAJOR" -lt 11 ] 2>/dev/null; then
+  echo "この Mac の macOS $(sw_vers -productVersion) では動作しません (macOS 11 以降が必要)。"
+  echo "ブラウザ版 (npm run serve) をお試しください。"
+  exit 1
+fi
+
+echo "==> 最新の dmg をダウンロード中 ($DMG_NAME)"
 curl -fL --progress-bar -o "$DMG" "$URL"
 
 echo "==> 起動中のアプリがあれば終了"

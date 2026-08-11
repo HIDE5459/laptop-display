@@ -37,14 +37,17 @@ jobs:
       - name: Build native helpers (macOS)
         if: runner.os == 'macOS'
         run: |
-          clang -O2 -fobjc-arc -framework Foundation -framework CoreGraphics \
+          # Intel 版アプリにも同梱するため universal (arm64 + x86_64) で作る
+          ARCHS="-arch arm64 -arch x86_64"
+          clang -O2 $ARCHS -fobjc-arc -framework Foundation -framework CoreGraphics \
             tools/mac/virtual-display.m -o build/VirtualDisplay
-          clang -O2 -framework CoreGraphics \
+          clang -O2 $ARCHS -framework CoreGraphics \
             tools/mac/cursor-move.m -o build/CursorMove
-          clang -O2 -framework ApplicationServices \
+          clang -O2 $ARCHS -framework ApplicationServices \
             tools/mac/modifier-tap.m -o build/ModifierTap
-          clang -O2 -framework ApplicationServices \
+          clang -O2 $ARCHS -framework ApplicationServices \
             tools/mac/input-inject.m -o build/InputInject
+          file build/VirtualDisplay build/CursorMove build/ModifierTap build/InputInject
 
       # Developer ID の証明書と Apple ID をシークレットに登録してあれば
       # 署名 + 公証まで行う。無ければ未署名でビルドする(警告は出るが動く)。
@@ -108,8 +111,11 @@ jobs:
           body: |
             Mac の画面を Windows ノートに低遅延ストリーミングしてサブディスプレイ化するアプリ。
 
-            - **LaptopDisplay-*-arm64.dmg** — Mac (Apple Silicon) 用・送信側
-            - **LaptopDisplay Setup *.exe** — Windows 10/11 (x64) 用・受信側
+            - **LaptopDisplay-*-arm64.dmg** — Mac (Apple Silicon) 用
+            - **LaptopDisplay-*-x64.dmg** — Mac (Intel) 用
+            - **LaptopDisplay Setup *.exe** — Windows 10/11 (x64) 用
+
+            動作環境: macOS 11 (Big Sur) 以降 / Windows 10・11。
 
             未署名ビルドのため初回起動時: Mac は右クリック→「開く」、
             Windows は SmartScreen で「詳細情報」→「実行」。

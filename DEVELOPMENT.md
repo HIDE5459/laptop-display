@@ -9,7 +9,11 @@ Windows ノートをセカンドモニタとして使うためのデスクトッ
 さらに Windows 側のキーボード・マウスで Mac を操作できる(簡易 KVM)。
 
 - 想定環境: MacBook Air (M4, 送信側) / MacBook Pro 2016 Boot Camp Windows 10 (受信側)
-- 配布形式: Mac 用 `.dmg` (Apple Silicon) / Windows 用 `.exe` (x64, NSIS ワンクリックインストーラ)
+- 配布形式: Mac 用 `.dmg` (arm64 / x64 の 2 種) / Windows 用 `.exe` (x64, NSIS ワンクリックインストーラ)
+- 動作環境: macOS 11 (Big Sur) 以降 / Windows 10・11。
+  macOS の下限は Electron 33 (Chromium) の要件による。
+  同梱ネイティブヘルパーは universal (arm64 + x86_64) でビルドし、
+  Intel 版アプリでも動くようにしている
 - 配布先: GitHub Release の `latest` タグ(CI が push ごとに差し替え)
 
 ## 2. 背景・経緯

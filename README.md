@@ -18,8 +18,22 @@ Windows ノートをサブディスプレイとして使うためのデスクト
 
 [**Releases**](../../releases/tag/latest) から最新ビルドを取得できます。
 
-- `LaptopDisplay-1.0.0-arm64.dmg` — Mac (Apple Silicon) 用
+- `LaptopDisplay-1.0.0-arm64.dmg` — Mac (Apple Silicon: M1 以降) 用
+- `LaptopDisplay-1.0.0-x64.dmg` — Mac (Intel) 用
 - `LaptopDisplay.Setup.1.0.0.exe` — Windows 10/11 (x64) 用
+
+### 動作環境
+
+| OS | 必要条件 |
+|---|---|
+| macOS | **11 (Big Sur) 以降**。Intel / Apple Silicon 両対応 |
+| Windows | 10 / 11 (x64) |
+
+macOS 11 未満(Catalina 以前)では起動しません。Electron 33 が土台にしている
+Chromium が macOS 10.15 のサポートを終了しているためです
+([Electron 33 リリースノート](https://www.electronjs.org/blog/electron-33-0))。
+その場合は**ブラウザ版**(後述の `npm run serve`)を使ってください。
+WebRTC が動くブラウザがあれば、かなり古い環境でも受信側として使えます。
 
 ### Mac: インストールスクリプトを使うのが簡単
 
