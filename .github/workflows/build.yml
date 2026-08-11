@@ -40,10 +40,32 @@ jobs:
           clang -O2 -fobjc-arc -framework Foundation -framework CoreGraphics \
             tools/mac/virtual-display.m -o build/VirtualDisplay
 
-      - name: Build
+      # Developer ID の証明書と Apple ID をシークレットに登録してあれば
+      # 署名 + 公証まで行う。無ければ未署名でビルドする(警告は出るが動く)。
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$CSC_LINK" ] && [ -n "$APPLE_ID" ]; then
+            echo "署名 + 公証ありでビルドします"
+            npx electron-builder ${{ matrix.args }} --publish never
+          else
+            echo "証明書が未設定のため未署名でビルドします"
+            CSC_IDENTITY_AUTO_DISCOVERY=false \
+              npx electron-builder ${{ matrix.args }} --publish never \
+              --config.mac.notarize=false \
+              --config.mac.hardenedRuntime=false
+          fi
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
         run: npx electron-builder ${{ matrix.args }} --publish never
         env:
-          # 未署名ビルド (署名証明書の自動検出を無効化)
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
       - uses: actions/upload-artifact@v4

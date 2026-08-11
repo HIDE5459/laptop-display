@@ -43,6 +43,11 @@
         }
       ],
       "category": "public.app-category.utilities",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": true,
       "extraResources": [
         {
           "from": "build/VirtualDisplay",

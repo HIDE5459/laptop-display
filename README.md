@@ -17,6 +17,27 @@ Windows ノートをサブディスプレイとして使うためのデスクト
 - `LaptopDisplay-1.0.0-arm64.dmg` — Mac (Apple Silicon) 用
 - `LaptopDisplay.Setup.1.0.0.exe` — Windows 10/11 (x64) 用
 
+### 署名・公証の設定 (Apple Developer Program 加入者向け)
+
+以下の 5 つを GitHub の **Settings → Secrets and variables → Actions** に登録すると、
+CI が自動で署名 + 公証まで行い、警告なしで開けるアプリになります。
+未登録の場合は未署名ビルドになります(下記の手動対処が必要)。
+
+| シークレット名 | 中身 |
+|---|---|
+| `MAC_CSC_LINK` | Developer ID Application 証明書 (.p12) を base64 化した文字列 |
+| `MAC_CSC_KEY_PASSWORD` | .p12 に付けたパスワード |
+| `APPLE_ID` | Apple ID のメールアドレス |
+| `APPLE_APP_SPECIFIC_PASSWORD` | appleid.apple.com で発行する「App 用パスワード」 |
+| `APPLE_TEAM_ID` | Team ID (10 文字。developer.apple.com の Membership で確認) |
+
+証明書の書き出し手順:
+
+1. Xcode → Settings → Accounts → Manage Certificates で
+   **Developer ID Application** を作成(なければ `+` から)
+2. キーチェーンアクセスで該当証明書を右クリック →「書き出す」→ .p12 形式で保存
+3. `base64 -i Certificates.p12 | pbcopy` で base64 にしてコピー
+
 ### Mac: インストールスクリプトを使うのが簡単
 
 Apple Developer Program に登録していないため、このアプリは**公証 (notarization) を

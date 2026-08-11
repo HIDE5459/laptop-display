@@ -19,6 +19,13 @@ function sign(target) {
 exports.default = async function afterPack(context) {
   if (context.electronPlatformName !== 'darwin') return;
 
+  // Developer ID 証明書がある場合は electron-builder が正式に署名して公証まで行う。
+  // ad-hoc 署名を先に付けると干渉するので何もしない。
+  if (process.env.CSC_LINK || process.env.CSC_NAME) {
+    console.log('Developer ID による署名を行うため ad-hoc 署名はスキップします');
+    return;
+  }
+
   const appPath = path.join(
     context.appOutDir,
     `${context.packager.appInfo.productFilename}.app`
