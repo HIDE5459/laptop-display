@@ -224,23 +224,32 @@ function updateAutoResOption(display) {
   const modes = (display.modes && display.modes.length ? display.modes : [native])
     .filter((m) => m.w > 0 && m.h > 0);
 
-  // 負荷と精細さのバランスが良いもの(1920 幅以下で最大)を推奨にする
-  const recommended = modes.find((m) => m.w <= 1920) || modes[modes.length - 1];
+  // 解像度の意味づけは、パネルの実解像度に対する倍率で決まる。
+  // Retina パネルを等倍(倍率 1.0)で使うと文字が小さすぎて実用にならないため、
+  // macOS のディスプレイ設定と同じ考え方(標準 / スペースを拡大)で表示する。
+  const label = (m) => {
+    const scale = native.w / m.w;
+    if (scale < 1.15) return '等倍 — 文字がかなり小さい・負荷高';
+    if (scale < 1.45) return '広い — 文字は小さめ';
+    if (scale < 1.65) return 'スペースを拡大 — 作業領域が広い';
+    if (scale < 1.95) return '標準 — 文字が読みやすい';
+    return '大きく表示 — 文字が大きい';
+  };
+
+  // 「スペースを拡大」相当(倍率 1.5 に最も近いもの)を既定にする
+  const recommended = modes.reduce((best, m) =>
+    Math.abs(native.w / m.w - 1.5) < Math.abs(native.w / best.w - 1.5) ? m : best
+  );
 
   const group = document.createElement('optgroup');
   group.dataset.auto = '1';
-  group.label = '受信側 (Windows) の画面が対応する解像度';
+  group.label = '受信側 (Windows) の画面に合う解像度';
 
   for (const m of modes) {
     const opt = document.createElement('option');
     opt.value = `${m.w}x${m.h}`;
-    let note = '';
-    if (m.w === native.w && m.h === native.h) {
-      note = ' — 最適(等倍・最も精細)';
-    } else if (recommended && m.w === recommended.w && m.h === recommended.h) {
-      note = ' — 推奨(負荷が軽い)';
-    }
-    opt.textContent = `${m.w} × ${m.h}${note}`;
+    const suffix = m === recommended ? ' ★推奨' : '';
+    opt.textContent = `${m.w} × ${m.h} (${label(m)})${suffix}`;
     group.appendChild(opt);
   }
 
