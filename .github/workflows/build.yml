@@ -34,11 +34,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build VirtualDisplay helper (macOS)
+      - name: Build native helpers (macOS)
         if: runner.os == 'macOS'
         run: |
           clang -O2 -fobjc-arc -framework Foundation -framework CoreGraphics \
             tools/mac/virtual-display.m -o build/VirtualDisplay
+          clang -O2 -framework CoreGraphics \
+            tools/mac/cursor-move.m -o build/CursorMove
 
       # Developer ID の証明書と Apple ID をシークレットに登録してあれば
       # 署名 + 公証まで行う。無ければ未署名でビルドする(警告は出るが動く)。

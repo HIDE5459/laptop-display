@@ -52,6 +52,10 @@
         {
           "from": "build/VirtualDisplay",
           "to": "VirtualDisplay"
+        },
+        {
+          "from": "build/CursorMove",
+          "to": "CursorMove"
         }
       ]
     },

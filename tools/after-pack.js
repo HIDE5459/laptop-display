@@ -32,10 +32,12 @@ exports.default = async function afterPack(context) {
   );
 
   // 内側の実行ファイルから先に署名する(入れ子のコードは外側より先に署名が必要)
-  const helper = path.join(appPath, 'Contents', 'Resources', 'VirtualDisplay');
-  if (fs.existsSync(helper)) {
-    fs.chmodSync(helper, 0o755);
-    sign(helper);
+  for (const name of ['VirtualDisplay', 'CursorMove']) {
+    const helper = path.join(appPath, 'Contents', 'Resources', name);
+    if (fs.existsSync(helper)) {
+      fs.chmodSync(helper, 0o755);
+      sign(helper);
+    }
   }
 
   // アプリ本体(同梱フレームワーク・ヘルパーを含めて)

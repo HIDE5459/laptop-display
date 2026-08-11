@@ -324,6 +324,60 @@ vdBtn.onclick = async () => {
   vdBtn.disabled = false;
 };
 
+// ---- カーソル移動のホットキー ----
+
+const CURSOR_KEY = 'laptopdisplay.cursorhotkey';
+const cursorCard = document.getElementById('cursorCard');
+const curEnabled = document.getElementById('curEnabled');
+const curCycleKey = document.getElementById('curCycleKey');
+const curSaveBtn = document.getElementById('curSaveBtn');
+const curTestBtn = document.getElementById('curTestBtn');
+const curSub = document.getElementById('curSub');
+
+async function applyCursorHotkeys(showResult = true) {
+  const config = {
+    enabled: curEnabled.checked,
+    cycle: curCycleKey.value.trim(),
+    direct: ['Control+Alt+1', 'Control+Alt+2', 'Control+Alt+3'],
+  };
+  try {
+    localStorage.setItem(CURSOR_KEY, JSON.stringify({ enabled: config.enabled, cycle: config.cycle }));
+  } catch {}
+
+  const res = await window.native.setCursorHotkeys(config);
+  if (!showResult) return;
+
+  if (!config.enabled) {
+    curSub.textContent = 'ホットキーは無効です';
+  } else if (res.failed && res.failed.length) {
+    curSub.textContent =
+      `登録できなかったキー: ${res.failed.join(', ')} — 他のアプリと競合している可能性があります`;
+  } else {
+    const displays = await window.native.countDisplays();
+    curSub.textContent =
+      `${curCycleKey.value.trim()} で移動できます(現在のディスプレイ数: ${displays})` +
+      (displays < 2 ? ' — 画面が 1 枚のときは動きません' : '');
+  }
+}
+
+curSaveBtn.onclick = () => applyCursorHotkeys();
+curEnabled.onchange = () => applyCursorHotkeys();
+curCycleKey.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') applyCursorHotkeys();
+});
+curTestBtn.onclick = () => window.native.cursorToNextDisplay();
+
+async function initCursorHotkeys() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CURSOR_KEY));
+    if (saved) {
+      if (typeof saved.enabled === 'boolean') curEnabled.checked = saved.enabled;
+      if (saved.cycle) curCycleKey.value = saved.cycle;
+    }
+  } catch {}
+  await applyCursorHotkeys();
+}
+
 // ---- 画質切り替え ----
 
 qualitySeg.addEventListener('click', (e) => {
@@ -398,6 +452,8 @@ async function tryAutoStart() {
 
   if (info.platform === 'darwin') {
     vdCard.style.display = '';
+    cursorCard.style.display = '';
+    await initCursorHotkeys();
     window.native.onVirtualDisplayChanged((active) => {
       if (!active && vdActive) setVdUi(false, '仮想ディスプレイが終了しました');
     });

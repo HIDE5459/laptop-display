@@ -54,6 +54,27 @@
       </p>
     </section>
 
+    <section class="card" id="cursorCard" style="display:none">
+      <h2>カーソルの移動</h2>
+      <div class="status-row">
+        <label class="status-sub" style="display:flex;align-items:center;gap:7px;cursor:pointer">
+          <input type="checkbox" id="curEnabled" checked>
+          ホットキーを有効にする
+        </label>
+        <input class="field" id="curCycleKey" value="Control+Alt+Tab" size="18">
+        <button class="btn" id="curSaveBtn">適用</button>
+        <button class="btn" id="curTestBtn">今すぐ移動</button>
+      </div>
+      <div class="status-sub" id="curSub" style="margin-top:8px"></div>
+      <p class="hint">
+        押すたびに次のディスプレイの中央へカーソルが飛び、移動先で一瞬リングが表示されます。
+        <b>Control+Alt+1 / 2 / 3</b> で画面を直接指定することもできます(こちらは固定)。<br>
+        キーの書き方: <code>Control</code> <code>Alt</code> <code>Shift</code>
+        <code>Command</code> を <code>+</code> でつなぎ、最後にキー名
+        (例: <code>Command+Alt+Right</code>)。単独キーは通常の入力を奪うので避けてください。
+      </p>
+    </section>
+
     <section class="card" id="pickerCard">
       <h2>配信する画面を選択</h2>
       <div id="permWarn" style="display:none; background:var(--panel-2); border:1px solid var(--border);

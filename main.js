@@ -15,6 +15,8 @@ const {
   powerSaveBlocker,
   shell,
   systemPreferences,
+  globalShortcut,
+  screen,
 } = require('electron');
 const path = require('path');
 const os = require('os');
@@ -149,6 +151,155 @@ ipcMain.handle('open-screen-settings', () => {
   );
 });
 
+// ---- カーソルを各ディスプレイの中央へ飛ばす ----
+// 画面が 3 枚になるとカーソルを見失いやすいので、ホットキーで移動できるようにする。
+// 移動先では一瞬リングを描いて位置を分かりやすくする。
+
+const RING_SIZE = 180;
+const RING_HTML = `<!DOCTYPE html><meta charset="utf-8">
+<style>
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  #ring {
+    position: absolute; inset: 6px; border-radius: 50%;
+    border: 6px solid rgba(79, 140, 255, 0.95);
+    box-shadow: 0 0 20px rgba(79, 140, 255, 0.85);
+    opacity: 0;
+  }
+  #ring.go { animation: pulse 0.6s ease-out forwards; }
+  @keyframes pulse {
+    0%   { transform: scale(0.25); opacity: 0; }
+    25%  { opacity: 1; }
+    100% { transform: scale(1); opacity: 0; }
+  }
+</style>
+<div id="ring"></div>
+<script>
+  function restart() {
+    const el = document.getElementById('ring');
+    el.classList.remove('go');
+    void el.offsetWidth; // アニメーションを巻き戻すために再計算させる
+    el.classList.add('go');
+  }
+  restart();
+</script>`;
+
+let ringWin = null;
+let ringTimer = null;
+let cursorHotkeys = [];
+
+function helperPath(name) {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, name)
+    : path.join(__dirname, 'build', name);
+}
+
+function warpCursor(x, y) {
+  if (process.platform !== 'darwin') return;
+  try {
+    execFileSync(helperPath('CursorMove'), [String(Math.round(x)), String(Math.round(y))], {
+      timeout: 2000,
+    });
+  } catch (err) {
+    console.error('カーソルを移動できませんでした:', err.message);
+  }
+}
+
+function showRing(x, y) {
+  if (!ringWin) {
+    ringWin = new BrowserWindow({
+      width: RING_SIZE,
+      height: RING_SIZE,
+      show: false,
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      hasShadow: false,
+      resizable: false,
+      movable: false,
+      minimizable: false,
+      fullscreenable: false,
+      skipTaskbar: true,
+      focusable: false,
+      webPreferences: { backgroundThrottling: false },
+    });
+    ringWin.setIgnoreMouseEvents(true);
+    ringWin.setAlwaysOnTop(true, 'screen-saver');
+    ringWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(RING_HTML));
+    ringWin.on('closed', () => (ringWin = null));
+  }
+
+  ringWin.setBounds({
+    x: Math.round(x - RING_SIZE / 2),
+    y: Math.round(y - RING_SIZE / 2),
+    width: RING_SIZE,
+    height: RING_SIZE,
+  });
+  ringWin.showInactive();
+  ringWin.webContents.executeJavaScript('restart()').catch(() => {});
+
+  clearTimeout(ringTimer);
+  ringTimer = setTimeout(() => {
+    if (ringWin && !ringWin.isDestroyed()) ringWin.hide();
+  }, 700);
+}
+
+// target: 'next' で次のディスプレイ、数値でその番号のディスプレイ (0 始まり)
+function cursorToDisplay(target) {
+  const displays = screen.getAllDisplays();
+  if (displays.length < 2) return;
+
+  let dest;
+  if (target === 'next') {
+    const current = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+    const index = displays.findIndex((d) => d.id === current.id);
+    dest = displays[(index + 1) % displays.length];
+  } else {
+    dest = displays[target];
+  }
+  if (!dest) return;
+
+  const x = dest.bounds.x + dest.bounds.width / 2;
+  const y = dest.bounds.y + dest.bounds.height / 2;
+  warpCursor(x, y);
+  showRing(x, y);
+}
+
+// config: { enabled, cycle: 'Control+Alt+Tab', direct: ['Control+Alt+1', ...] }
+function registerCursorHotkeys(config) {
+  for (const accelerator of cursorHotkeys) {
+    try {
+      globalShortcut.unregister(accelerator);
+    } catch {}
+  }
+  cursorHotkeys = [];
+
+  if (!config || !config.enabled) return { ok: true, registered: [], failed: [] };
+
+  const failed = [];
+  const tryRegister = (accelerator, handler) => {
+    if (!accelerator) return;
+    try {
+      if (globalShortcut.register(accelerator, handler)) cursorHotkeys.push(accelerator);
+      else failed.push(accelerator);
+    } catch {
+      failed.push(accelerator);
+    }
+  };
+
+  tryRegister(config.cycle, () => cursorToDisplay('next'));
+  (config.direct || []).forEach((accelerator, i) => {
+    tryRegister(accelerator, () => cursorToDisplay(i));
+  });
+
+  return { ok: failed.length === 0, registered: cursorHotkeys, failed };
+}
+
+ipcMain.handle('set-cursor-hotkeys', (_e, config) => registerCursorHotkeys(config));
+ipcMain.handle('cursor-to-next-display', () => cursorToDisplay('next'));
+ipcMain.handle('count-displays', () => screen.getAllDisplays().length);
+
+app.on('will-quit', () => globalShortcut.unregisterAll());
+
 // 仮想ディスプレイの配置 (左右上下) は macOS のディスプレイ設定で変更する
 ipcMain.handle('open-display-settings', () => {
   if (process.platform !== 'darwin') return;
@@ -195,7 +346,6 @@ function windowsSupportedModes() {
 }
 
 ipcMain.handle('get-display-info', () => {
-  const { screen } = require('electron');
   const display = screen.getPrimaryDisplay();
   const scaleFactor = display.scaleFactor || 1;
   const native = {
