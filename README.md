@@ -87,6 +87,13 @@ macOS の警告文と原因の対応:
 
 1. **Mac** で LaptopDisplay を起動(自動で送信側モードになります)
    - 初回は macOS の「画面収録」権限を求められるので許可して再起動
+   - **アプリを更新したあとに画面一覧が空になる場合**は、署名が変わって以前の許可が
+     無効になっています。アプリ内の案内から設定を開いて許可し直すか、次を実行:
+
+     ```bash
+     tccutil reset ScreenCapture com.hide5459.laptop-display
+     open -a LaptopDisplay
+     ```
 2. **Windows** で LaptopDisplay を起動(自動で受信側モードになります)
    - 同じネットワーク内なら**自動で Mac を発見して接続**します。
      見つからない場合は Mac の IP を手動入力

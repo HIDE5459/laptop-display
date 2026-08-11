@@ -53,6 +53,15 @@
 
     <section class="card" id="pickerCard">
       <h2>配信する画面を選択</h2>
+      <div id="permWarn" style="display:none; background:var(--panel-2); border:1px solid var(--border);
+           border-left:3px solid var(--warn); border-radius:8px; padding:12px 14px; margin-bottom:12px">
+        <div style="font-size:13.5px; margin-bottom:4px">画面収録の権限がありません</div>
+        <div class="status-sub" id="permWarnText" style="margin-bottom:10px"></div>
+        <div class="status-row">
+          <button class="btn" id="permOpenBtn">設定を開く</button>
+          <button class="btn" id="permRelaunchBtn">許可したので再起動</button>
+        </div>
+      </div>
       <div class="grid" id="sourceGrid"></div>
       <p class="hint" id="pickerHint">
         拡張ディスプレイとして使う場合は BetterDisplay の仮想ディスプレイを選択してください。

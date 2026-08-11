@@ -5,7 +5,17 @@
 //   送信側: シグナリングサーバーを内蔵起動し、UDP ビーコンで自分の存在を通知する
 //   受信側: UDP ビーコンを待ち受け、送信側を見つけたら自動接続する
 
-const { app, BrowserWindow, Menu, ipcMain, desktopCapturer, clipboard, powerSaveBlocker } = require('electron');
+const {
+  app,
+  BrowserWindow,
+  Menu,
+  ipcMain,
+  desktopCapturer,
+  clipboard,
+  powerSaveBlocker,
+  shell,
+  systemPreferences,
+} = require('electron');
 const path = require('path');
 const os = require('os');
 const dgram = require('dgram');
@@ -119,6 +129,29 @@ ipcMain.handle('get-sources', async () => {
     kind: s.id.startsWith('screen') ? 'screen' : 'window',
     thumb: s.thumbnail.isEmpty() ? null : s.thumbnail.toDataURL(),
   }));
+});
+
+// 画面収録の権限状態。アプリを更新すると署名が変わるため、
+// 以前許可していても無効に戻ることがある(その場合ここが 'denied' になる)。
+ipcMain.handle('get-screen-permission', () => {
+  if (process.platform !== 'darwin') return 'granted';
+  try {
+    return systemPreferences.getMediaAccessStatus('screen');
+  } catch {
+    return 'unknown';
+  }
+});
+
+ipcMain.handle('open-screen-settings', () => {
+  if (process.platform !== 'darwin') return;
+  return shell.openExternal(
+    'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+  );
+});
+
+ipcMain.handle('relaunch', () => {
+  app.relaunch();
+  app.exit(0);
 });
 
 ipcMain.handle('get-peers', () => peerState);

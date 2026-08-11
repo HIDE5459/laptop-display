@@ -10,6 +10,10 @@ const castSub = document.getElementById('castSub');
 const urlRow = document.getElementById('urlRow');
 const qualitySeg = document.getElementById('qualitySeg');
 const autoChk = document.getElementById('autoChk');
+const permWarn = document.getElementById('permWarn');
+const permWarnText = document.getElementById('permWarnText');
+const permOpenBtn = document.getElementById('permOpenBtn');
+const permRelaunchBtn = document.getElementById('permRelaunchBtn');
 
 // おまかせ起動: 前回配信時の構成を保存し、次回起動時に自動で再現する
 const PREF_KEY = 'laptopdisplay.autocast';
@@ -50,8 +54,32 @@ function updateStatus() {
 
 // ---- 画面一覧 ----
 
+// 画面収録の権限が無いと一覧が空になったりサムネイルが真っ黒になる。
+// アプリを更新すると署名が変わって権限が無効に戻るため、原因と直し方を明示する。
+async function checkScreenPermission(sources) {
+  if (info.platform !== 'darwin') return;
+  const status = await window.native.getScreenPermission();
+  const noSources = !sources.some((s) => s.kind === 'screen');
+  const noThumbs = sources.length > 0 && sources.every((s) => !s.thumb);
+
+  if (status === 'granted' && !noSources && !noThumbs) {
+    permWarn.style.display = 'none';
+    return;
+  }
+
+  permWarn.style.display = '';
+  permWarnText.textContent =
+    status === 'granted'
+      ? 'システム上は許可済みですが画面を取得できていません。アプリを更新すると署名が変わり、以前の許可が無効になることがあります。設定で LaptopDisplay を一度削除(−)してから、下の「再起動」を押して許可し直してください。'
+      : '「画面収録」で LaptopDisplay を許可してください。許可のあとアプリを再起動しないと反映されません。';
+}
+
+permOpenBtn.onclick = () => window.native.openScreenSettings();
+permRelaunchBtn.onclick = () => window.native.relaunch();
+
 async function refreshSources() {
   const sources = await window.native.getSources();
+  await checkScreenPermission(sources);
   sourceGrid.innerHTML = '';
   for (const s of sources) {
     const tile = document.createElement('button');
@@ -75,6 +103,14 @@ async function refreshSources() {
       refreshSources();
     };
     sourceGrid.appendChild(tile);
+  }
+
+  if (!sources.length) {
+    const empty = document.createElement('div');
+    empty.className = 'status-sub';
+    empty.textContent =
+      '配信できる画面が見つかりませんでした。上の案内にしたがって画面収録を許可してください。';
+    sourceGrid.appendChild(empty);
   }
 }
 
