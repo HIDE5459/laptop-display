@@ -42,22 +42,30 @@ jobs:
 
       # Developer ID の証明書と Apple ID をシークレットに登録してあれば
       # 署名 + 公証まで行う。無ければ未署名でビルドする(警告は出るが動く)。
+      # シークレットは MAC_ 接頭辞付きで受け取り、署名する場合にだけ
+      # electron-builder が見る名前 (CSC_LINK など) に移す。
+      # 空の CSC_LINK を渡すと証明書のパスとして解決されてビルドが失敗するため。
       - name: Build (macOS)
         if: runner.os == 'macOS'
         env:
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          MAC_APPLE_ID: ${{ secrets.APPLE_ID }}
+          MAC_APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          MAC_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          if [ -n "$CSC_LINK" ] && [ -n "$APPLE_ID" ]; then
+          if [ -n "$MAC_CSC_LINK" ] && [ -n "$MAC_APPLE_ID" ]; then
             echo "署名 + 公証ありでビルドします"
+            export CSC_LINK="$MAC_CSC_LINK"
+            export CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"
+            export APPLE_ID="$MAC_APPLE_ID"
+            export APPLE_APP_SPECIFIC_PASSWORD="$MAC_APPLE_APP_PASSWORD"
+            export APPLE_TEAM_ID="$MAC_APPLE_TEAM_ID"
             npx electron-builder ${{ matrix.args }} --publish never
           else
-            echo "証明書が未設定のため未署名でビルドします"
-            CSC_IDENTITY_AUTO_DISCOVERY=false \
-              npx electron-builder ${{ matrix.args }} --publish never \
+            echo "証明書が未設定のため未署名でビルドします (ad-hoc 署名のみ)"
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            npx electron-builder ${{ matrix.args }} --publish never \
               --config.mac.notarize=false \
               --config.mac.hardenedRuntime=false
           fi
